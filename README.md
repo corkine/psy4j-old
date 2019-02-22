@@ -2,7 +2,16 @@
 
 > A cognitive science package based on object-oriented programming ideas. The program is driven by the JavaFx framework and the JVM platform.
 
-## Version 1.2.4
+Psy4J means **Psychology TookKit For Java Virtual Machine Platform**，The program is written in Java 8 and Scala 2.1.6 and built on the JavaFx 2 GUI platform.
+
+
+## Structure
+
+![](http://static2.mazhangjing.com/20190218/4f4630d_psy4j.png)
+
+## Update Log
+
+### Version 1.2.4
 
 在当前的版本中，使用 Scala 混合 Java 实现了 Psy4J。相比较之前的版本，现在版本只用声明一个文件即可，请参照 com.mazhangjing.demo/experiment 中的例子，创建一个 Experiment 的实现，然后使用 LabUtils 类提供的 Builder 方法创建若干个包裹 Screen 的 Trial，并且将其注入到 Experiment 中，如果需要保存数据，在 Experiment 的方法中提供实现即可。
 
@@ -12,7 +21,7 @@ EventMaker 是版本新加入的类，此类实现后，由 ExpRunner 交付给 
 
 2019-02-22 Corkine Ma @ CCNU
 
-## Version 1.0.0
+### Version 1.0.0
 
 一组带有高精度定时器的类在 com.mazhangjing.lab 中实现。使用者可以参照 com.mazhangjing.zsw 中的结构层次，继承 Screen、Trial、Experiment，然后将其拼装在一起即可。参照 Main.java 中的内容，可以驱动你的 Experiment 运行。
 
