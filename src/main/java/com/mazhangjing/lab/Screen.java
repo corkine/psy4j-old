@@ -26,6 +26,19 @@ import org.slf4j.LoggerFactory;
  * */
 public abstract class Screen {
 
+    /*一个失败的尝试：使用 Builder 模式简化 Screen 开发
+    问题在于：Screen 是抽象类，而 Java 不能将函数作为值进行传递，因此不能通过先构造一个 Screen，然后再注入函数/属性的 Builder 模式。
+    以及，也不能先保存一个函数，然后再注入一个匿名 Screen 中。
+    private static class Builder implements com.mazhangjing.lab.Builder<Screen> {
+        private Integer duration;
+        private String information;
+        public Screen named(String name) {
+        }
+        @Override public Screen build() {
+            return null;
+        }
+    }*/
+
     protected Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private Experiment experiment;
@@ -40,6 +53,10 @@ public abstract class Screen {
         System.out.println("Setting screen now...");
         this.experiment = experiment;
     }
+
+    public void callWhenShowScreen() {}
+
+    public void callWhenLeavingScreen() {}
 
     public Scene getScene() {
         return scene;

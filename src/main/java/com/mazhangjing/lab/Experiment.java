@@ -79,7 +79,7 @@ public abstract class Experiment {
      * 控制台的变化来自于计时器超时或者用户相应，这也需要通过监听器绑定。
      * 即：GUI组件变化 -- 控制台状态变化 -- 保存数据并且绘制下一个Screen或者进行其他相应（比如弹出对话框，给被试反馈等）。这些实现在GUI类中完成。
      **/
-    public SimpleIntegerProperty terminal = new SimpleIntegerProperty(0);
+    volatile public SimpleIntegerProperty terminal = new SimpleIntegerProperty(0);
 
     /**默认构造器，会执行 initExperiment 方法来设置 trials 实例*/
     public Experiment() {
@@ -159,7 +159,7 @@ public abstract class Experiment {
         return information;
     }
 
-    public static void main(String[] args) {
+    public static void testRun(String[] args) {
         SimpleIntegerProperty terminal = new SimpleIntegerProperty(0);
         Screen screen1 = new Screen() {
             @Override
@@ -236,4 +236,39 @@ public abstract class Experiment {
         experiment.release();
         System.out.println(experiment.getScreen());
     }
+
+    /*
+
+    @SuppressWarnings("unchecked")
+    private static Class<? extends Config> getConfigClazz(File file) {
+        try {
+            HashMap hashMap = new Yaml().loadAs(new FileReader(file), HashMap.class);
+            String configName = (String) hashMap.getOrDefault("configClassName","com.mazhangjing.lab.Config");
+            return (Class<? extends Config>) Class.forName(configName);
+        } catch (Exception ignored) {} return null;
+    }
+
+    public static void run() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+        File file = Paths.get("/Users/corkine/工作文件夹/cmPsyLab/Lab/Lab/src/main/resources/config.yml").toFile();
+        assert (file.exists());
+        Config config = loadConfig(file, getConfigClazz(file));
+        Setting setting = config.getSetting();
+        String expClassName = setting.getExpClassName();
+        Class<?> aClass = Class.forName(expClassName);
+        Form form = ((Form) aClass.newInstance());
+        Form.main(null);
+    }
+
+    public static void main3(String[] args) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+        File file = Paths.get("/Users/corkine/工作文件夹/cmPsyLab/Lab/Lab/src/main/resources/config.yml").toFile();
+        assert (file.exists());
+        Config config = loadConfig(file, getConfigClazz(file));
+        Setting setting = config.getSetting();
+
+        //Experiment experiment = (Experiment) Class.forName(setting.getExpClassName()).newInstance();
+        Experiment experiment = null;
+        FxRunner form = (FxRunner)
+                Class.forName(config.getFormClassName(), true, ClassLoader.getSystemClassLoader()).newInstance();
+        form.runExperiment(experiment);
+    }*/
 }

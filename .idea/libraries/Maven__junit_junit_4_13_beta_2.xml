@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: junit:junit:4.13-beta-2">
+    <CLASSES>
+      <root url="jar://$APPLICATION_HOME_DIR$/bin/repos/junit/junit/4.13-beta-2/junit-4.13-beta-2.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$APPLICATION_HOME_DIR$/bin/repos/junit/junit/4.13-beta-2/junit-4.13-beta-2-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$APPLICATION_HOME_DIR$/bin/repos/junit/junit/4.13-beta-2/junit-4.13-beta-2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

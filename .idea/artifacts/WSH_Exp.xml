@@ -1,0 +1,15 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="WSH_Exp">
+    <output-path>$PROJECT_DIR$/out/artifacts/WSH_Exp</output-path>
+    <root id="archive" name="Lab.jar">
+      <element id="module-output" name="Psy4J" />
+      <element id="extracted-dir" path="$APPLICATION_HOME_DIR$/bin/repos/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$APPLICATION_HOME_DIR$/bin/repos/junit/junit/4.13-beta-1/junit-4.13-beta-1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$APPLICATION_HOME_DIR$/bin/repos/ch/qos/logback/logback-core/1.2.3/logback-core-1.2.3.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$APPLICATION_HOME_DIR$/bin/repos/ch/qos/logback/logback-classic/1.2.3/logback-classic-1.2.3.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$APPLICATION_HOME_DIR$/bin/repos/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/sphinx4-core-5prealpha-20160628.232526-10.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/sphinx4-data-5prealpha-20160628.232535-10.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

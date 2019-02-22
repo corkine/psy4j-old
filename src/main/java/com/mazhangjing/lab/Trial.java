@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * <p>Trial 类主要用来抽象试次：包含并且遍历一组Screen，接受用户实验的数据</p>
@@ -70,7 +71,7 @@ public abstract class Trial {
     }
 
     /**一个用来保存Screen对象的容器*/
-    protected ArrayList<Screen> screens = new ArrayList<>();
+    protected List<Screen> screens = new ArrayList<>();
 
     /**一个用来指明当前Trial含义的辅助标签字符串，使用 toString 方法调用*/
     protected String information = "Trial";
