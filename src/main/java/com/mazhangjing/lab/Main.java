@@ -87,7 +87,6 @@ public class Main extends Application {
      */
     public Main() throws ClassNotFoundException, IllegalAccessException, InstantiationException, IOException {
         //通过反射创建 ExpRunner
-        System.out.println("hello = ");
         initRunner();
         //注入 Experiment 对象
         this.experiment = ((Experiment) Class.forName(this.runner.getExperimentClassName()).newInstance());
