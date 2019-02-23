@@ -2,7 +2,7 @@
 
 > A cognitive science package based on object-oriented programming ideas. The program is driven by the JavaFx framework and the JVM platform.
 
-Psy4J means **Psychology TookKit For Java Virtual Machine Platform**，The program is written in Java 8 and Scala 2.1.6 and built on the JavaFx 2 GUI platform.
+Psy4J means **Psychology ToolKit For Java Virtual Machine Platform**，The program is written in Java 8 and Scala 2.1.6 and built on the JavaFx 2 GUI platform.
 
 
 ## Structure
