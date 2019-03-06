@@ -11,6 +11,18 @@ Psy4J means **Psychology ToolKit For Java Virtual Machine Platform**，The progr
 
 ## Update Log
 
+### Version 1.2.5
+
+添加了数据处理的 DataUtils 工具类和 DataConvert 数据转换类（均使用 Scala 实现，不提供 Java API，虽然也可以使用 —— 因为使用了一些 Scala 的特殊语法来简化开发，比如隐式类型转换、柯里化、表达式即值等特性）。
+
+此工具类可以用于快速的从一堆文件中，对每个文件直接读取到某种数据结构，然后对数据集合进行处理，之后打印到某个流中。
+
+只用提供数据结构，然后定义从文件的每行向数据结构的转换方法即可。此外，可以在转换之前，在读取之后，进行一些统计性的工作。当转换完成 —— 转换为数据集合后，可以对数据进行各种类型的操作，程序
+
+提供了计算标准差、过滤 N 个标准差的简便方法。此外，也提供了用于快速遍历某个文件夹的快速函数，提供了快速打印输出到文件中保存的快速函数。
+
+2019-03-06 Corkine Ma @ CCNU
+
 ### Version 1.2.4
 
 在当前的版本中，使用 Scala 混合 Java 实现了 Psy4J。相比较之前的版本，现在版本只用声明一个文件即可，请参照 com.mazhangjing.demo/experiment 中的例子，创建一个 Experiment 的实现，然后使用 LabUtils 类提供的 Builder 方法创建若干个包裹 Screen 的 Trial，并且将其注入到 Experiment 中，如果需要保存数据，在 Experiment 的方法中提供实现即可。
