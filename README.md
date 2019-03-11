@@ -11,6 +11,14 @@ Psy4J means **Psychology ToolKit For Java Virtual Machine Platform**，The progr
 
 ## Update Log
 
+### Version 1.2.6
+
+添加了语音处理类、语音检测使用工具。
+
+修正了 DataUtils getSD 计算时使用的是总体数据，而非样本数据的问题。
+
+2019-03-11 Corkine Ma @ CCNU
+
 ### Version 1.2.5
 
 添加了数据处理的 DataUtils 工具类和 DataConvert 数据转换类（均使用 Scala 实现，不提供 Java API，虽然也可以使用 —— 因为使用了一些 Scala 的特殊语法来简化开发，比如隐式类型转换、柯里化、表达式即值等特性）。
