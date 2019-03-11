@@ -11,6 +11,7 @@ import scala.io.Source
  *
   * @since 1.2.5
   * @note 2019-03-06 撰写本工具类
+  *       2019-03-11 修正 getSD 为计算样本而非总体标准差
   */
 object DataUtils {
   /**
@@ -25,7 +26,7 @@ object DataUtils {
       math.sqrt(data.map(each => {
         val abs = each - avg
         abs * abs
-      }).sum / length)
+      }).sum / (length - 1))
     sd
   }
 
