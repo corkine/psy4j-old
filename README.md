@@ -2,7 +2,7 @@
 
 > A cognitive science package based on object-oriented programming ideas. The program is driven by the JavaFx framework and the JVM platform.
 
-Psy4J means **Psychology ToolKit For Java Virtual Machine Platform**，The program is written in Java 8 and Scala 2.1.6 and built on the JavaFx 2 GUI platform.
+Psy4J means **Psychology ToolKit For Java Virtual Machine Platform**，The program is written in Java 8 and Scala 2.12.6 and built on the JavaFx 2 GUI platform.
 
 
 ## Structure
@@ -10,6 +10,233 @@ Psy4J means **Psychology ToolKit For Java Virtual Machine Platform**，The progr
 ![](http://static2.mazhangjing.com/20190218/4f4630d_psy4j.png)
 
 ## Update Log
+
+### Version 1.2.7
+
+增强了 DataUtils 类的功能，修正了一些细节问题。
+
+将 `getSD` 拆分为 `getSimpleSD` 和 `getTotalSD`， 将 `walkAndProcess` 拆分为 `walkAndProcess` 以及 `walkAndProcessAround`。
+
+后者当遍历完一个文件夹后，统一执行操作，将 `doWithFile` 拆分为 `doWithLine` 和 `doWithTable`，前者将 `Stream[String]` 转换为 `Stream[D]`，之后，后者相比前者，又进行了 `Stream[D]` 到 `S` 的转换。
+
+因为在实际中发现，或许除了 `Data` 表示每行的数据之外，还需要 `Subject` 定义一些对于整张表的方法，比如对每行数据进行的分组策略，每个被试的实验条件信息等。
+
+下面是一个使用 DataUtils 处理，且没有 Subject 层的示例文档：
+
+```scala
+object DataBatch {
+
+  /**
+    * 将每行转换成对应的数据结构 - 必须为 12 行数据，如果为 11 行，则伪造最后一行为全部正确
+    *
+    * @param line 如果每行不齐，则返回伪造数据，用于最后的对齐，反之，则装载真正数据
+    * @return 伪造或者真实的数据，通过 real 属性辨别
+    */
+  def lineToData(line: String): Option[Data] = 
+    if (line.contains("ID, SHOW_TIME,")) return None
+    var s = line.split(",").filterNot(_.isEmpty).map(_.trim).map(_.replace("$",""))
+    if (s.length != 12) {
+      println("Get Wrong Line => " + line)
+      if (s.length == 11) s = fakeLine(s)
+      else return Option(fakeData)
+    }
+    val data = Data(
+      s(0), s(1).toLong, s(2).toLong, s(3).toLong, s(4).toLong, s(5).toLong, s(6).toLong,
+      if (s(7).toInt == 0) false else true, s(8).toLong,
+      if (s(9).toInt == 0) false else true, s(10), if (s(11).toInt == 0) false else true
+    )
+    Option(finalCheck(data))
+  }
+
+  def dataToSubject(in: Stream[Data]): Subject = Subject(in.toArray)
+
+  var duration_time_bad_line = 0
+
+  def finalCheck(in:Data):Data = {
+    if (in.duration_time_ms < 250) {
+      duration_time_bad_line += 1
+      in.real = false
+      in
+    }
+    else in
+  }
+
+  def fakeLine(s: Array[String]): Array[String] = {
+    println(s"Fake Line to ${s.mkString(",") + ",1"}")
+    s ++ Array("1")
+  }
+
+  def fakeData: Data = Data("0",0L,0L,0L,0L,0L,0L,size_is_big = false,0L, sti_is_left = false,"", answer = false, real = false)
+  
+  case class Subject(lines: Array[Data])
+
+  def invoke(path: Path, isPreExp:Boolean = false): Path =
+    walkAndProcess(path, _.toFile.toString.endsWith(".csv"))(
+      f => {
+        implicit val sb: StringBuilder = new StringBuilder
+        doWithTable(f,
+          check = c => {
+            println(s"Total Line is ${c.filterNot(_.isEmpty).size}")
+            sb.append(s"Total Line is ${c.filterNot(_.isEmpty).size}\n")
+          },
+          convert = lineToData,
+          collect = dataToSubject)(
+          s => {
+            val i = s.lines
+            if (isPreExp) i.foreach(_.isPreExp = true)
+            val all_removed_data_length = i.filterNot(_.real).toList.size
+            val b = i.toArray.filter(_.real)
+            val a = b.filter(_.correct)
+            val correct_wrong_count = b.length - a.length
+            if (a.forall(_.isPreExp)) {
+              val left_late = a.filter(d => d.sti_is_left && d.order_is_late).map(_.duration_time_ms.toDouble)
+              val left_early = a.filter(d => d.sti_is_left && !d.order_is_late).map(_.duration_time_ms.toDouble)
+              val right_late = a.filter(d => !d.sti_is_left && d.order_is_late).map(_.duration_time_ms.toDouble)
+              val right_early = a.filter(d => !d.sti_is_left && !d.order_is_late).map(_.duration_time_ms.toDouble)
+
+              val ll_res = filterInSD(2)(left_late, getSD(left_late))
+              val le_res = filterInSD(2)(left_early, getSD(left_early))
+              val rl_res = filterInSD(2)(right_late, getSD(right_late))
+              val re_res = filterInSD(2)(right_early, getSD(right_early))
+
+              sb.append(s"CHECK_BY = JI_OU\n")
+              sb.append(s"For LEFT_LATE: ${ll_res.sum / ll_res.length} ms, SD is ${getSD(ll_res)} ms\n")
+              sb.append(s"For LEFT_EARLY: ${le_res.sum / le_res.length} ms, SD is ${getSD(le_res)} ms\n")
+              sb.append(s"For RIGHT_LATE: ${rl_res.sum / rl_res.length} ms, SD is ${getSD(rl_res)} ms\n")
+              sb.append(s"For RIGHT_EARLY: ${re_res.sum / re_res.length} ms, SD is ${getSD(re_res)} ms\n")
+              sb.append("\n\n\n")
+
+            } else if (a.forall(_.check_by == "ORDER")) {
+              val left_late = a.filter(d => d.sti_is_left && d.order_is_late).map(_.duration_time_ms.toDouble)
+              val left_early = a.filter(d => d.sti_is_left && !d.order_is_late).map(_.duration_time_ms.toDouble)
+              val right_late = a.filter(d => !d.sti_is_left && d.order_is_late).map(_.duration_time_ms.toDouble)
+              val right_early = a.filter(d => !d.sti_is_left && !d.order_is_late).map(_.duration_time_ms.toDouble)
+
+              val ll_res = filterInSD(2)(left_late, getSD(left_late))
+              val le_res = filterInSD(2)(left_early, getSD(left_early))
+              val rl_res = filterInSD(2)(right_late, getSD(right_late))
+              val re_res = filterInSD(2)(right_early, getSD(right_early))
+
+              sb.append(s"CHECK_BY = ORDER\n")
+              sb.append(s"For LEFT_LATE: ${ll_res.sum / ll_res.length} ms, SD is ${getSD(ll_res)} ms\n")
+              sb.append(s"For LEFT_EARLY: ${le_res.sum / le_res.length} ms, SD is ${getSD(le_res)} ms\n")
+              sb.append(s"For RIGHT_LATE: ${rl_res.sum / rl_res.length} ms, SD is ${getSD(rl_res)} ms\n")
+              sb.append(s"For RIGHT_EARLY: ${re_res.sum / re_res.length} ms, SD is ${getSD(re_res)} ms\n")
+              sb.append("\n\n\n")
+            } else if (a.forall(_.check_by == "SIZE")) {
+              val big_left = a.groupBy(d => d.sti_is_left && d.size_is_big)(true).map(_.duration_time_ms.toDouble)
+              val big_right = a.groupBy(d => !d.sti_is_left && d.size_is_big)(true).map(_.duration_time_ms.toDouble)
+              val small_left = a.groupBy(d => d.sti_is_left && !d.size_is_big)(true).map(_.duration_time_ms.toDouble)
+              val small_right = a.groupBy(d => !d.sti_is_left && !d.size_is_big)(true).map(_.duration_time_ms.toDouble)
+
+              val bl_res = filterInSD(2)(big_left, getSD(big_left))
+              val br_res = filterInSD(2)(big_right, getSD(big_right))
+              val sl_res = filterInSD(2)(small_left, getSD(small_left))
+              val sr_res = filterInSD(2)(small_right, getSD(small_right))
+              
+              sb.append(s"CHECK_BY = SIZE\n")
+              sb.append(s"For BIG_LEFT: ${bl_res.sum / bl_res.length} ms, SD is ${getSD(bl_res)} ms\n")
+              sb.append(s"For BIG_RIGHT: ${br_res.sum / br_res.length} ms, SD is ${getSD(br_res)} ms\n")
+              sb.append(s"For SMALL_LEFT: ${sl_res.sum / sl_res.length} ms, SD is ${getSD(sl_res)} ms\n")
+              sb.append(s"For SMALL_RIGHT: ${sr_res.sum / sr_res.length} ms, SD is ${getSD(sr_res)} ms\n")
+              sb.append("\n\n\n")
+            } else { }
+
+            val newFile = Paths.get(f.getFileName.toString.replace(".csv", "") + "_final.csv")
+            saveTo(newFile) {
+              sb.append("ID, SHOW_TIME, ACTION_TIME, SHOW_TIME_MS, DURATION_TIME_MS," +
+                "STAND_SIZE, ACTION_SIZE, SIZE_IS_BIG, ACTION_ORDER, STI_IS_LEFT," +
+                "CHECK_BY, ANSWER, ORDER_IS_LATE, STAND_ANSWER, CORRECT").append("\n")
+              i.foreach(data => {
+                import DataConvert._
+                sb.append(data.id).append(", ")
+                sb.append(data.show_time).append(", ")
+                sb.append(data.action_time).append(", ")
+                sb.append(data.show_time_ms).append(", ")
+
+                data.duration_time_ms.inSb
+                data.stand_size.inSb
+                data.action_size.inSb
+                data.size_is_big.str.inSb
+                data.action_order.inSb
+                data.sti_is_left.str.inSb
+                data.check_by.inSb
+                data.answer.str.inSb
+                data.order_is_late.str.inSb
+                data.stand_answer.str.inSb
+                data.correct.str.endLineInSb
+              })
+              sb
+            }
+        })
+    })
+
+  def runInJava(isPreExp:Boolean = false): Unit = {
+    printToFile(Paths.get("result.log")) {
+      invoke(Paths.get("."), isPreExp = isPreExp)
+    }
+  }
+}
+
+/**
+  * 数据结构
+  */
+case class Data(
+                 id: String,
+                 show_time: Long,
+                 action_time: Long,
+                 show_time_ms: Long,
+                 duration_time_ms: Long,
+                 stand_size: Long,
+                 action_size: Long,
+                 size_is_big: Boolean,
+                 action_order: Long,
+                 sti_is_left: Boolean,
+                 check_by: String,
+                 answer: Boolean,
+                 var real:Boolean = true,
+                 var isPreExp:Boolean = false
+               ) {
+  /**
+    * 对于 ORDER 判断条件的正确答案
+    * @return
+    */
+  def order_is_late: Boolean = {
+      if (action_order == 0 || action_order == 1) false
+      else if (action_order == 3 || action_order == 4) true
+      else throw new RuntimeException(s"ACTION_ORDER 列错误 -> $action_order")
+  }
+
+  /**
+    * 对于 PRE_EXP 预实验的正确答案
+    * @return
+    */
+  def stand_answer: Boolean = {
+    //如果是预实验，那么 奇数返回 false，偶数返回 true
+    if (action_order == 0 || action_order == 4) false else true
+  }
+
+  /**
+    * 根据不同条件的正确答案，结合主试的输入答案，计算出是否正确
+    * @return 比较结果
+    */
+  def correct: Boolean = {
+    if (isPreExp) {
+      if (stand_answer && answer) true
+      else if (!stand_answer && !answer) true
+      else false
+    } else if (check_by == "SIZE") {
+      if (size_is_big && answer) true
+      else if (!size_is_big && !answer) true
+      else false
+    } else if (check_by == "ORDER") {
+      if (order_is_late && answer) true
+      else if (!order_is_late && !answer) true
+      else false
+    } else false
+  }
+}
+```
 
 ### Version 1.2.6
 
