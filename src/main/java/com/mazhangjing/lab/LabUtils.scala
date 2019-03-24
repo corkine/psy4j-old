@@ -1,5 +1,6 @@
 /***
   * @version 1.2.3 2019-02-19 LabUtils 添加了 ifMouseButton、ifKeyPress 的精简过入参的方法
+  *          1.2.4 2019-03-24 修正了一个逻辑上的问题 —— 在 ScreenBuilder 的 eventHandler 中不能方便的跳转到下一屏幕的问题
   */
 package com.mazhangjing.lab
 
@@ -47,7 +48,7 @@ object ScreenBuilder extends Builder[Screen] {
   private var name = ""
   private var showTime = 0
   private var parent: Parent = _
-  private var eventAction = mutable.Buffer[(Event, Experiment, Scene) => Unit]()
+  private var eventAction = mutable.Buffer[(Event, Experiment, Scene, Screen) => Unit]()
   private var preShowAction = mutable.Buffer[(Experiment, Scene) => Unit]()
   private var afterShowAction = mutable.Buffer[(Experiment, Scene) => Unit]()
 
@@ -105,7 +106,7 @@ object ScreenBuilder extends Builder[Screen] {
     * @param eventAction JavaAPI，接受事件、当前实验、当前场景三个参数，进行操作，返回 null。
     * @return ScreenBuilder
     */
-  def ifEventThen(eventAction: (Event, Experiment, Scene) => Unit): ScreenBuilder.type = {
+  def ifEventThen(eventAction: (Event, Experiment, Scene, Screen) => Unit): ScreenBuilder.type = {
     this.eventAction += eventAction; this
   }
 
@@ -165,7 +166,7 @@ object ScreenBuilder extends Builder[Screen] {
       override def callWhenLeavingScreen(): Unit =
         afterShowAction.foreach(f => f(getExperiment, getScene))
       override def eventHandler(event: Event, experiment: Experiment, scene: Scene): Unit =
-        eventAction.foreach(func => func(event, experiment, scene))
+        eventAction.foreach(func => func(event, experiment, scene, this))
     }
     result.initScreen()
   }

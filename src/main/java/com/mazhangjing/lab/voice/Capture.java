@@ -78,9 +78,9 @@ public class Capture extends Task<Double> {
         while (running) {
             line.read(data, 0, bufferLengthInBytes);
             double result = dataNow(data);
+            updateMessage(String.valueOf(result));
             if (result != 0.0) {
                 //System.out.println(result);
-                updateMessage(String.valueOf(result));
             }
         }
 

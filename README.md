@@ -11,6 +11,14 @@ Psy4J means **Psychology ToolKit For Java Virtual Machine Platform**，The progr
 
 ## Update Log
 
+### Version 1.2.8
+
+修正了 ScreenBuilder 中无法快速的处理事件 —— 执行跳转的问题。
+
+添加了实用工具类：角度和像素转换工具。添加了实用工具类：根据 YAML 配置自动执行命令的启动器
+
+![](http://static2.mazhangjing.com/20190324/21f10b6_cm_image2019-03-2417.19.11.png)
+
 ### Version 1.2.7
 
 增强了 DataUtils 类的功能，修正了一些细节问题。

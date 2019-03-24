@@ -48,7 +48,7 @@ class TrialA extends Trial {
       println(s"Before Screen Show You can get $exp and $sce")
     }).afterShowThen((exp, sce) => {
       println(s"After Screen Show You can get $exp and $sce")
-    }).ifEventThen((event, exp, sce) => {
+    }).ifEventThen((event, exp, sce, _) => {
       implicit val getEvent:Event = event
       implicit val experiment:Experiment = exp
       implicit val scene:Scene = sce
