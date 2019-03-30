@@ -1,11 +1,8 @@
 package com.mazhangjing.lab;
 
-import javafx.beans.property.SimpleIntegerProperty;
 import javafx.event.Event;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.layout.FlowPane;
-import jdk.nashorn.internal.objects.annotations.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +72,7 @@ public abstract class Screen {
     public Parent layout;
 
     /**Screen 用来说明其功能的字符串，使用 toString 可以获得*/
-    public String infomation = "Screen";
+    public String information = "Screen";
 
     /**你应该在子类自行实现 Screen 的 initScreen 方法，为 layout 和 duration 变量赋值，设置子类状态*/
     public abstract Screen initScreen();
@@ -101,7 +98,7 @@ public abstract class Screen {
     public final Parent getLayout() { return this.layout; }
 
     public String toString() {
-        return infomation;
+        return information;
     }
 
     /*public static void main(String[] args){

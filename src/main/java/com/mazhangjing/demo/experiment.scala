@@ -87,7 +87,7 @@ class SingleScreen extends ScreenAdaptor {
   /** 你应该在子类自行实现 Screen 的 initScreen 方法，为 layout 和 duration 变量赋值，设置子类状态 */
   override def initScreen(): Screen = {
     duration = 5000
-    infomation = "SingleScreen"
+    information = "SingleScreen"
     val pane = new BorderPane()
     val text = new Text("Hello, World"); text.setFont(Font.font(60)); text.setFill(Color.RED)
     pane.setCenter(text)

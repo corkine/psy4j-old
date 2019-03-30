@@ -52,6 +52,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @version 1.2.4
  * @author Corkine, MaZhangJing
+ *         2019年03月30日 修正了 setScreen 的方法。
  */
 public class Main extends Application {
 
@@ -126,7 +127,7 @@ public class Main extends Application {
         //首先处理页面遗留问题
         try {
             currentScreen.callWhenLeavingScreen();
-        } catch (Exception ignore) {}
+        } catch (Exception e) { logger.warn(e.getMessage()); }
         //之后重载页面
         currentScreen = experiment.getScreen();
         logger.debug("Current Screen is " + currentScreen);
@@ -137,7 +138,7 @@ public class Main extends Application {
                 scene.setRoot(currentScreen.layout);
                 try {
                     currentScreen.callWhenShowScreen();
-                } catch (Exception ignore) {}
+                } catch (Exception e) { logger.warn(e.getMessage()); }
             });
             //添加时间监听器
             Platform.runLater(()-> setTimer(currentScreen.duration));

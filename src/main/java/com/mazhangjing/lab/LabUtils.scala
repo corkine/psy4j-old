@@ -155,7 +155,7 @@ object ScreenBuilder extends Builder[Screen] {
       //说白了这是一个 OOP 和 FP 的冲突，也是方法和函数的冲突，方法可以动态定义，依赖类中其它方法，而函数则必须静态定义，
       //但是其优点是可以像值一样传递，非常轻便，而方法则必须寄居在一个类中（太过于沉重）。
       override def initScreen(): Screen = {
-        this.infomation = name
+        this.information = name
         this.duration = showTime
         this.layout = parent
         this
