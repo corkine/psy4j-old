@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Experiment 类的一个辅助类，用于在 Experiment 和 Main 之间建立连接。在 Main 中通过反射创建此 ExpRunner，
+ * Experiment 类的一个辅助类，用于在 Experiment 和 SimpleExperimentHelperImpl 之间建立连接。在 SimpleExperimentHelperImpl 中通过反射创建此 ExpRunner，
  * 之后，从 ExpRunner 中获取 title、log、EventMaker Set 等信息，初始化 Experiment 实例，开始试验。
  *
  * <pre>{@code
@@ -33,7 +33,7 @@ import java.util.Set;
  */
 public abstract class ExpRunner {
     /**
-     * Main 中传递给 Screen 事件的触发器的集合，其会在 Main 中作为独立线程运行，比如语音检测，如果有事件发生，
+     * SimpleExperimentHelperImpl 中传递给 Screen 事件的触发器的集合，其会在 SimpleExperimentHelperImpl 中作为独立线程运行，比如语音检测，如果有事件发生，
      * 则调用自身实现的 makeEvent 方法将事件传递给 Screen、Experiment 等。
      */
     private Set<String> eventMakerSet;
@@ -50,11 +50,11 @@ public abstract class ExpRunner {
      */
     private String title = "DEMO";
     /**
-     * 实验的版本，会显示在 GUI 窗口的标题栏，以及 Main 启动的首屏幕上。
+     * 实验的版本，会显示在 GUI 窗口的标题栏，以及 SimpleExperimentHelperImpl 启动的首屏幕上。
      */
     private String version = "0.0.1";
     /**
-     * 实验的更新日志，在 Main 启动后的首屏幕上显示。
+     * 实验的更新日志，在 SimpleExperimentHelperImpl 启动后的首屏幕上显示。
      */
     private List<String> logs = new ArrayList<>();
 

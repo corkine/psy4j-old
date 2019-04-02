@@ -11,6 +11,41 @@ Psy4J means **Psychology ToolKit For Java Virtual Machine Platform**，The progr
 
 ## Update Log
 
+### Version 1.2.10
+
+添加了 WaveUtil，提供快速获取连续间隔以及随机间隔的，指定频率数、呈现长度、空白长度、总共呈现长度的纯音刺激的 API。
+
+添加了 ExperimentHelper 接口，并且将 Main.java 和 Application 类解耦，将原本 Main.java 中的代码使用 SimpleExperimentHelperImpl 提供实现。
+
+这种设计可以允许在任何的 Application 中创建一个 ExperimentHelper，其中 ExperimentHelper 包含了所有的 Experiment 信息，以及其调用策略，通过调用 `ExperimentHelper#initStage` 为 Application 创建一个 Scene，并将其和 Stage 绑定。
+
+如下是现在 Psy4J 的使用步骤：
+
+```scala
+class AppDemo extends Application {
+  val runner = new ExpRunner {
+    override def initExpRunner(): Unit = {
+      setEventMakerSet(null)
+      val set = new util.HashSet[OpenedEvent]()
+      set.add(OpenedEvent.KEY_PRESSED)
+      setOpenedEventSet(set)
+      setExperimentClassName("com.mazhangjing.demo.CmExperiment")
+      setTitle("DEMO TITLE")
+      setVersion("0.0.1")
+      setFullScreen(true)
+    }
+  }
+  override def start(stage: Stage): Unit = {
+    val helper: ExperimentHelper = new SimpleExperimentHelperImpl(runner)
+    helper.initStage(stage)
+    stage.setTitle("Hello")
+    stage.show()
+  }
+}
+```
+
+可以看到，现在的 Psy4J 更接近一个简单的工具，而不是一个必须调用的很重的 Application —— 这种更接近创建一个简单的 JavaFx GUI 界面的写法允许将 Experiment 嵌入任意的 JavaFx 程序中。
+
 ### Version 1.2.9
 
 修正了 Main.java 中呈现 Screen 时调用 callBefore 和 callAfter 时发生错误的处理方式。

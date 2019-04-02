@@ -1,6 +1,5 @@
 package com.mazhangjing.lab;
 
-import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.event.Event;
@@ -23,8 +22,6 @@ import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -38,8 +35,8 @@ import java.util.concurrent.TimeUnit;
  * 对象，对于每个 EventMaker 对象，注入 Experiment 和 Scene 对象，然后在一个独立的线程中运行，EventMaker 可以通过 Experiment
  * 对象获取当前 Screen，然后对其进行 eventHandler 调用传递事件，比如语音的检测等等。
  *
- * @apiNote Main 继承自 JavaFX 的 Application 类，属于客户端代码，大部分方法均为私有。通过传递构造好的 Experiment 对象来产生合适的行为，请勿继承或者装饰此类。
- * Main 类主要包含了Experiment实验对象，当前的 Screen 对象，一个用于定时切换 Screen 的 ScheduledThreadPoolExecutor 对象，一个用于 Screen 对象在其子类终止计时器行为的
+ * @apiNote SimpleExperimentHelperImpl 继承自 JavaFX 的 Application 类，属于客户端代码，大部分方法均为私有。通过传递构造好的 Experiment 对象来产生合适的行为，请勿继承或者装饰此类。
+ * SimpleExperimentHelperImpl 类主要包含了Experiment实验对象，当前的 Screen 对象，一个用于定时切换 Screen 的 ScheduledThreadPoolExecutor 对象，一个用于 Screen 对象在其子类终止计时器行为的
  * SimpleIntegerProperty 类型对象，其被称作 terminal，此对象从 Experiment 内置的 terminal 变量中获得。
  *
  * @apiNote 当 executor 达到当前 Screen 的延迟时间，则调用 terminal，改变其值为 1，之后内置的 terminal 监听器会自动切换下一个 Screen，并且重置 terminal 的值为0
@@ -54,23 +51,23 @@ import java.util.concurrent.TimeUnit;
  * @author Corkine, MaZhangJing
  *         2019年03月30日 修正了 setScreen 的方法。
  */
-public class Main extends Application {
-
-    private ExpRunner runner;
+public class SimpleExperimentHelperImpl implements ExperimentHelper {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private final Experiment experiment;
+    private ExpRunner runner;
 
-    private Screen currentScreen;
+    private Experiment experiment;
 
-    private final ScheduledThreadPoolExecutor executor;
+    private ScheduledThreadPoolExecutor executor;
+
+    private Runnable changeTask;
 
     private static SimpleIntegerProperty terminal;
 
-    private final Runnable changeTask;
-
     private final Scene scene = new Scene(drawWelcomeContent(),400,300);
+
+    private Screen currentScreen;
 
     private static final String COPYRIGHT =
             "The copyright of this software belongs to the Virtual Behavior Laboratory of the School of Psychology, Central China Normal University. " +
@@ -86,9 +83,30 @@ public class Main extends Application {
      * 在此处通过对 classpath 下的 invoke.properties 中的 expRunnerClassName 获取，之后通过反射创建 ExpRunner 对象，将其注入到自己的属性中
      * 之后，通过其来继续注入 Experiment 对象、初始化 currentScreen、设置单线程的全局计时器、注册 terminal 观察者。
      */
-    public Main() throws ClassNotFoundException, IllegalAccessException, InstantiationException, IOException {
+    public SimpleExperimentHelperImpl(ExpRunner runner)
+            throws ClassNotFoundException, IllegalAccessException, InstantiationException, IOException {
+        initExperiment(runner, null);
+    }
+
+    public SimpleExperimentHelperImpl(Stage stage, String runnerProps)
+            throws ClassNotFoundException, IOException, InstantiationException, IllegalAccessException {
+        initExperiment(null, runnerProps);
+    }
+
+    /**
+     * 初始化实验、控制器、任务管理器
+     * @param runner ExpRunner，提供需要监测的事件
+     * @param runnerProps Props 文件地址，用于反射创建 ExpRunner
+     * @throws ClassNotFoundException 没有从 Props 文件找到 ExpRunner
+     * @throws InstantiationException 无法从 Props 文件初始化 ExpRunner
+     * @throws IllegalAccessException 无法访问 ExpRunner 实例
+     * @throws IOException 无法读取 Props 文件
+     */
+    private void initExperiment(ExpRunner runner, String runnerProps)
+            throws ClassNotFoundException, InstantiationException, IllegalAccessException, IOException {
         //通过反射创建 ExpRunner
-        initRunner();
+        if (runner == null) this.runner = initRunner(runnerProps);
+        else this.runner = runner;
         //注入 Experiment 对象
         this.experiment = ((Experiment) Class.forName(this.runner.getExperimentClassName()).newInstance());
         //注入依赖
@@ -107,12 +125,13 @@ public class Main extends Application {
         executor.setRemoveOnCancelPolicy(true);
     }
 
-    private void initRunner() throws IOException, ClassNotFoundException, IllegalAccessException, InstantiationException {
+    private ExpRunner initRunner(String runnerProps)
+            throws IOException, ClassNotFoundException, IllegalAccessException, InstantiationException {
         Properties properties = new Properties();
-        properties.load(getClass().getClassLoader().getResourceAsStream("invoke.properties"));
+        properties.load(getClass().getClassLoader().getResourceAsStream(runnerProps));
         String expRunnerClassName = properties.getProperty("expRunnerClassName");
-        this.runner = (ExpRunner) Class.forName(expRunnerClassName).newInstance();
         logger.debug("Get Runner From Invoke: invoke.properties " + runner);
+        return (ExpRunner) Class.forName(expRunnerClassName).newInstance();
     }
 
     /**
@@ -208,12 +227,12 @@ public class Main extends Application {
     }
 
     /**
-     * 加载 JavaFx GUI 资源，展示 GUI 界面，在此处设置 EventHandler。
-     * @param primaryStage JavaFx 主场景
+     * 在此处注册 EventHandler，并启动相关线程
+     * @param runner ExpRunner 提供 OpenedEvent 集合
+     * @param scene Scene 提供需要注册来自的 Scene
      */
-    @Override @SuppressWarnings("unchecked")
-    public void start(Stage primaryStage) {
-        primaryStage.setScene(scene);
+    @SuppressWarnings("unchecked")
+    private void initEventHandler(ExpRunner runner, Scene scene) {
         Set<OpenedEvent> set = runner.getOpenedEventSet();
         //根据 Runner 的设置来注册需要传递给 Screen 的 JavaFx 内置事件
         if (set.contains(OpenedEvent.KEY_PRESSED)) {
@@ -237,26 +256,46 @@ public class Main extends Application {
                 new Thread(maker).start();
             });
         }
+    }
+
+
+    /**
+     * 返回 Helper 最核心的 Scene 对象
+     * 在 initExperiment 处理过 Scene 后，同时为 Scene 注册 EventHandler，并启动相关线程。
+     * 同时为 Stage 设置默认的 Scene，并且设置一些 Stage 的方法，比如样式表、尺寸大小、关闭行为、全屏行为，但是不显示
+     * @param stage 需要装饰的 Stage
+     * @return Scene
+     */
+    @Override public Scene initStage(Stage stage) {
+        initEventHandler(runner, scene);
+        initStageImpl(stage);
+        stage.setScene(scene);
+        return this.scene;
+    }
+
+    /**
+     * 加载 JavaFx GUI 资源，准备 GUI 界面（Scene，样式表，尺寸大小，关闭行为，全屏行为），但是不显示
+     * 可以继承和重写
+     * @param stage Stage 场景
+     */
+    protected void initStageImpl(Stage stage) {
         //设置是否全屏显示
         if (runner.getFullScreen()) {
-            primaryStage.setFullScreen(true);
-            primaryStage.setFullScreenExitHint("");
-            primaryStage.setFullScreenExitKeyCombination(KeyCombination.valueOf("F11"));
+            stage.setFullScreen(true);
+            stage.setFullScreenExitHint("");
+            stage.setFullScreenExitKeyCombination(KeyCombination.valueOf("F11"));
         }
         //设置外观样式
-        primaryStage.setWidth(900.0);
-        primaryStage.setHeight(600.0);
-        primaryStage.setTitle(String.format("%s - %s - Powered by PSY4J - CM ❤️ OpenSource",runner.getTitle(), runner.getVersion()));
+        stage.setWidth(900.0);
+        stage.setHeight(600.0);
+        stage.setTitle(String.format("%s - %s - Powered by PSY4J - CM ❤️ OpenSource",runner.getTitle(), runner.getVersion()));
         //设置样式表文件
         scene.getStylesheets().add(
                 Objects.requireNonNull(getClass().getClassLoader().getResource("style.css")).toExternalForm());
 
-        primaryStage.show();
-        primaryStage.setOnCloseRequest(event -> {
+        stage.setOnCloseRequest(event -> {
             experiment.saveData();
             System.exit(0);
         });
     }
-
-    public static void main(String[] args) { launch(args); }
 }

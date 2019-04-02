@@ -14,4 +14,6 @@ case class iScreen(var screenPX: Double, var  screenCM: Double, var personToScre
   def degToScreenPx(objectDeg:Double):Double = {
     math.tan(math.Pi * objectDeg / 180) * (screenPX * personToScreenCM / screenCM)
   }
+
+
 }

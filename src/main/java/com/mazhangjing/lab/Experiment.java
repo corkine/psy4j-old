@@ -269,6 +269,6 @@ public abstract class Experiment {
         Experiment experiment = null;
         FxRunner form = (FxRunner)
                 Class.forName(config.getFormClassName(), true, ClassLoader.getSystemClassLoader()).newInstance();
-        form.runExperiment(experiment);
+        form.prepareExperiment(experiment);
     }*/
 }

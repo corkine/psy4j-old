@@ -3,10 +3,10 @@ package com.mazhangjing.lab;
 import javafx.scene.Scene;
 
 /**
- * EventMaker 是一个在 Main 中触发的，独立运行的线程，其可以通过 Experiment.getScene 向 Scene 中发送 event，调用
+ * EventMaker 是一个在 SimpleExperimentHelperImpl 中触发的，独立运行的线程，其可以通过 Experiment.initStage 向 Scene 中发送 event，调用
  * scene.eventHandler 来向当前显示的 Screen 中传递事件。
  * @apiNote  继承此类，并且重写 run 方法，当满足条件后，调用 experiment 以向 Screen 传递事件。
- *           定义完毕此类后，需要将此类注册到 ExpRunner 的 eventMakerSet 属性中，以便于 Main 从 classpath 下的 invoke.properties
+ *           定义完毕此类后，需要将此类注册到 ExpRunner 的 eventMakerSet 属性中，以便于 SimpleExperimentHelperImpl 从 classpath 下的 invoke.properties
  *           文件中反射创建 ExpRunner 后，调用 eventMakerSet 反射创建 EventMaker，并且初始化并调用。
  * <pre>{@code
  * public class VoiceEventMaker extends EventMaker {

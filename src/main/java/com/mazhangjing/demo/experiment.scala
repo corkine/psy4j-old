@@ -4,6 +4,7 @@ import java.util
 
 import com.mazhangjing.lab.LabUtils._
 import com.mazhangjing.lab._
+import javafx.application.Application
 import javafx.event.Event
 import javafx.geometry.Pos
 import javafx.scene.Scene
@@ -11,6 +12,7 @@ import javafx.scene.input.KeyCode
 import javafx.scene.layout.{BorderPane, HBox}
 import javafx.scene.paint.Color
 import javafx.scene.text.{Font, Text}
+import javafx.stage.Stage
 
 class CmExperiment extends Experiment {
   /** 你应该在此实现并且传递一组 Trial 类型的数据到 trials 变量中。 */
@@ -104,23 +106,27 @@ class SingleScreen extends ScreenAdaptor {
   override def eventHandler(event: Event, experiment: Experiment, scene: Scene): Unit = {
     ifKeyButton(KeyCode.A, event) {
       println("A Pressed")
-      goNextScreenUnSafe //使用了隐式 def 值，是否为空呢？ 否
+      goNextScreenSafe //使用了隐式 def 值，是否为空呢？ 否
     }
   }
 }
 
-class CmExpRunner extends ExpRunner {
-  /**
-    * 在其中初始化 eventMakerSet， openedEventSet， experiment，title，version，logs，fullScreen
-    */
-  override def initExpRunner(): Unit = {
-    setEventMakerSet(null)
-    val set = new util.HashSet[OpenedEvent]()
-    set.add(OpenedEvent.KEY_PRESSED)
-    setOpenedEventSet(set)
-    setExperimentClassName("com.mazhangjing.demo.CmExperiment")
-    setTitle("DEMO TITLE")
-    setVersion("0.0.1")
-    setFullScreen(true)
+class AppDemo extends Application {
+  override def start(stage: Stage): Unit = {
+    val helper: ExperimentHelper = new SimpleExperimentHelperImpl(new ExpRunner {
+      override def initExpRunner(): Unit = {
+        setEventMakerSet(null)
+        val set = new util.HashSet[OpenedEvent]()
+        set.add(OpenedEvent.KEY_PRESSED)
+        setOpenedEventSet(set)
+        setExperimentClassName("com.mazhangjing.demo.CmExperiment")
+        setTitle("DEMO TITLE")
+        setVersion("0.0.1")
+        setFullScreen(true)
+      }
+    })
+    helper.initStage(stage)
+    stage.setTitle("Hello")
+    stage.show()
   }
 }

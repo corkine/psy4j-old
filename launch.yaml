@@ -4,16 +4,16 @@ commandList:
     command: java -cp app.jar com.mazhangjing.wsh.RealMain --is_pre_exp=1 --exp_number=2
   wsh_2:
     name: 学习 1
-    command: java -cp app.jar com.mazhangjing.wsh.Main --is_pre_exp=0 --exp_number=1
+    command: java -cp app.jar com.mazhangjing.wsh.SimpleExperimentHelperImpl --is_pre_exp=0 --exp_number=1
   wsh_3:
     name: 学习 2
-    command: java -cp app.jar com.mazhangjing.wsh.Main --is_pre_exp=0 --exp_number=2
+    command: java -cp app.jar com.mazhangjing.wsh.SimpleExperimentHelperImpl --is_pre_exp=0 --exp_number=2
   wsh_4:
     name: 学习 3
-    command: java -cp app.jar com.mazhangjing.wsh.Main --is_pre_exp=0 --exp_number=3
+    command: java -cp app.jar com.mazhangjing.wsh.SimpleExperimentHelperImpl --is_pre_exp=0 --exp_number=3
   wsh_5:
     name: 学习 4
-    command: java -cp app.jar com.mazhangjing.wsh.Main --is_pre_exp=0 --exp_number=4
+    command: java -cp app.jar com.mazhangjing.wsh.SimpleExperimentHelperImpl --is_pre_exp=0 --exp_number=4
   wsh_6:
     name: 测验 1
     command: java -cp app.jar com.mazhangjing.wsh.RealMain --is_pre_exp=0 --exp_number=1

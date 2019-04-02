@@ -10,4 +10,5 @@ import javafx.scene.Scene
 trait ScreenAdaptor extends Screen {
   implicit def exp: Experiment = getExperiment
   implicit def sce: Scene = getScene
+  implicit val scr: Screen = this
 }
