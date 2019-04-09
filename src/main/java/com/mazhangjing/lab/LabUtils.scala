@@ -7,10 +7,15 @@ package com.mazhangjing.lab
 import java.util.{Timer, TimerTask}
 
 import javafx.event.Event
+import javafx.geometry.Pos
 import javafx.scene.input.{KeyCode, KeyEvent, MouseButton, MouseEvent}
-import javafx.scene.{Parent, Scene}
+import javafx.scene.layout.HBox
+import javafx.scene.paint.Color
+import javafx.scene.shape.Rectangle
+import javafx.scene.{Group, Parent, Scene}
 
 import scala.collection.mutable
+import scala.util.Random
 
 /**
   * ScreenBuilder 用来使用 Builder 模式快速创建只含有静态内容、固定时间的 Screen，其也可以处理鼠标点击、移动、
@@ -43,6 +48,8 @@ import scala.collection.mutable
   *               return null;
   *             })
   *             .build())
+  *
+  *  @note 2019-04-03 去除了 ScreenBuilder 和 TrialBuilder 的 init 操作
   */
 object ScreenBuilder extends Builder[Screen] {
   private var name = ""
@@ -158,6 +165,7 @@ object ScreenBuilder extends Builder[Screen] {
         this.information = name
         this.duration = showTime
         this.layout = parent
+        this.layout.setStyle("-fx-background-color: transparent;-fx-border-color: transparent;")
         this
       }
       //这些调用是动态的，因此不会出错。
@@ -168,92 +176,7 @@ object ScreenBuilder extends Builder[Screen] {
       override def eventHandler(event: Event, experiment: Experiment, scene: Scene): Unit =
         eventAction.foreach(func => func(event, experiment, scene, this))
     }
-    result.initScreen()
-  }
-}
-
-/**
-  * TrialBuilder 用来使用 Builder 方法创建 Trial 实例
-  *
-  * @usecase  TrialBuilder.named("测试试次")
-  *               .addScreen(
-  *                   ScreenBuilder
-  *                   .named("准备开始屏幕")
-  *                   .showIn(SET.START_CLICK_MS.getValue())
-  *                   .setScene(() -> {
-  *                      HBox box = new HBox();
-  *                      box.setAlignment(Pos.BOTTOM_CENTER);
-  *                      Button btn = new Button("START");
-  *                      box.getChildren().addAll(btn);
-  *                      btn.setOnAction(event -> this.terminal.set(1));
-  *                      return box; })
-  *                   .build())
-  *                .addScreen(new TestStiHeadScreen(array).initScreen())
-  *                .addScreen(new TestStiBackScreen(array).initScreen())
-  *                .addScreen(
-  *                     ScreenBuilder.named("空白屏幕")
-  *                     .showIn(SET.ANS_BLANK_MS.getValue())
-  *                     .setScene(new HBox())
-  *                     .build())
-  *           .build()
-  */
-object TrialBuilder extends Builder[Trial] {
-  import scala.collection.JavaConverters._
-  private var name = ""
-  private val screensInTrail = mutable.Buffer[Screen]()
-
-  /**
-    * 给当前 Trial 设置 information 属性，比如 "刺激展示序列"
-    * @param name 名称字符串
-    * @return TrialBuilder
-    */
-  def named(name:String): TrialBuilder.type = {
-    this.name = name; this
-  }
-
-  /**
-    * 给当前 Trial 设置 Screen，此 Screen 会被添加到 Trial screens List 的末尾
-    * @param screen 试次包含的 Screen 对象
-    * @return TrialBuilder
-    */
-  def addScreen(screen: Screen): TrialBuilder.type = {
-    this.screensInTrail += screen; this
-  }
-
-  /**
-    * 给当前的 Trial 设置 Screen，此 Screen 会被添加到 Trial screens List 的末尾
-    * @param opToScreen 试次包含的 Screen 对象， JavaAPI
-    * @return TrialBuilder
-    */
-  def addScreen(opToScreen: () => Screen): TrialBuilder.type = {
-    this.screensInTrail += opToScreen(); this
-  }
-
-  /**
-    * 给当前的 Trial 设置多个 Screen，其会被逐个按顺序添加到 Trial screens List 的末尾
-    * @param screens 试次包含的多个 Screen 对象， JavaAPI
-    * @return TrialBuilder
-    */
-  def addScreens(screens: java.util.List[Screen]): TrialBuilder.type = {
-    this.screensInTrail ++= screens.asScala; this
-  }
-
-  /**
-    * 构建 Trial 对象
-    * @throws IllegalStateException 必须调用 addScreen 或者 addScreens 方法设置 screens List，List 不能为空
-    * @return 构造好的 Trial 实例
-    */
-  override def build(): Trial = {
-    if (screensInTrail.isEmpty)
-      throw new IllegalStateException("创建的 Trial 中的 Screens 不能为空")
-    val result = new Trial {
-      override def initTrial(): Trial = {
-        this.information = name
-        this.screens = screensInTrail.asJava
-        this
-      }
-    }
-    result.initTrial()
+    result
   }
 }
 
@@ -442,6 +365,32 @@ object LabUtils {
   def doAfter(delay: Long)(doTask : => Unit)(implicit experiment: Experiment, screen: Screen): Unit = {
     doAfter(delay, experiment, screen)(() => doTask)
   }
+}
+
+object ShelterUtils {
+  val shelters: Array[Parent] = {
+    List.range(0,10).map(_ => {
+      val totalWidth = 600
+      val singleWidth = 15
+      val pane = new HBox()
+      pane.setAlignment(Pos.CENTER)
+      val group = new Group()
+      for (i <- List.range(0,totalWidth,singleWidth)) {
+        for (j <- List.range(0,totalWidth,singleWidth)) {
+          val box = new Rectangle()
+          box.setHeight(singleWidth)
+          box.setWidth(singleWidth)
+          box.setFill(if (Random.nextBoolean()) Color.BLACK else Color.WHITE)
+          box.setX(i)
+          box.setY(j)
+          group.getChildren.addAll(box)
+        }
+      }
+      pane.getChildren.addAll(group)
+      pane
+    }).toArray
+  }
+  def getRandomShelter: Parent = shelters(Random.nextInt(shelters.length))
 }
 
 

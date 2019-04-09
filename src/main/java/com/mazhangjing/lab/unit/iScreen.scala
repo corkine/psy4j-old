@@ -1,5 +1,11 @@
 package com.mazhangjing.lab.unit
 
+/**
+  * 2019年04月05日 修正了度数计算为视角一半的问题
+  * @param screenPX 屏幕长边尺寸
+  * @param screenCM 屏幕长边像素
+  * @param personToScreenCM 人距离屏幕距离
+  */
 case class iScreen(var screenPX: Double, var  screenCM: Double, var personToScreenCM: Double) {
   def init(screenPX: Double, screenCM: Double, personToScreenCM: Double): iScreen = {
     this.screenPX = screenPX
@@ -8,12 +14,10 @@ case class iScreen(var screenPX: Double, var  screenCM: Double, var personToScre
     this
   }
   def pxInScreenToDeg(objectPX:Double):Double = {
-    math.atan((screenCM * objectPX) /(screenPX * personToScreenCM)) * (180/math.Pi)
+    (math.atan((screenCM * objectPX) /(screenPX * personToScreenCM)) * (180/math.Pi)) * 2
   }
 
   def degToScreenPx(objectDeg:Double):Double = {
-    math.tan(math.Pi * objectDeg / 180) * (screenPX * personToScreenCM / screenCM)
+    math.tan(math.Pi * (objectDeg / 2) / 180) * (screenPX * personToScreenCM / screenCM)
   }
-
-
 }

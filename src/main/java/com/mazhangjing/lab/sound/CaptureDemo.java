@@ -1,5 +1,6 @@
-package com.mazhangjing.lab.voice;
+package com.mazhangjing.lab.sound;
 
+import com.mazhangjing.lab.sound.Capture;
 import javafx.application.Application;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;

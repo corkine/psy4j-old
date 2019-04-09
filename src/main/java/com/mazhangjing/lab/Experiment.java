@@ -83,7 +83,7 @@ public abstract class Experiment {
 
     /**默认构造器，会执行 initExperiment 方法来设置 trials 实例*/
     public Experiment() {
-        initExperiment();
+        //initExperiment();
     }
 
     /**实现此方法来通过 getTrial 方法获取 Trial 对象，通过 getUserData 来保存数据到文件。一般应该对GUI关闭事件添加监听器完成此步骤*/
@@ -138,7 +138,6 @@ public abstract class Experiment {
     }
 
     public final void initScreensAndTrials(Scene scene) {
-        System.out.println("init now...");
         trials.forEach(trial -> {
             trial.setScene(scene);
             trial.setExperiment(this);
@@ -159,7 +158,7 @@ public abstract class Experiment {
         return information;
     }
 
-    public static void testRun(String[] args) {
+    /*public static void testRun(String[] args) {
         SimpleIntegerProperty terminal = new SimpleIntegerProperty(0);
         Screen screen1 = new Screen() {
             @Override
@@ -222,20 +221,20 @@ public abstract class Experiment {
             }
             terminal.set(0);
         }));
-        System.out.println(experiment.getScreen());
-        System.out.println(experiment.getScreen());
+        //System.out.println(experiment.getScreen());
+        //System.out.println(experiment.getScreen());
         experiment.release();
         experiment.release();
-        System.out.println(experiment.getScreen());
+        //System.out.println(experiment.getScreen());
         experiment.release();
-        System.out.println(experiment.getScreen());
+        //System.out.println(experiment.getScreen());
         //experiment.release();
         experiment.terminal.set(1);
-        System.out.println(experiment.getScreen());
-        System.out.println(experiment.terminal.get());
+        //System.out.println(experiment.getScreen());
+        //System.out.println(experiment.terminal.get());
         experiment.release();
-        System.out.println(experiment.getScreen());
-    }
+        //System.out.println(experiment.getScreen());
+    }*/
 
     /*
 

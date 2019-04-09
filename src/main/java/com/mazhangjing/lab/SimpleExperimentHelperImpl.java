@@ -5,6 +5,7 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -23,6 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
@@ -50,6 +53,8 @@ import java.util.concurrent.TimeUnit;
  * @version 1.2.4
  * @author Corkine, MaZhangJing
  *         2019年03月30日 修正了 setScreen 的方法。
+ *         2019年4月4日 修正了 initExperiment 的问题 - 在父类构造器中导致在子类 Experiment 调用 initExperiment 中引用子类字段和方法为空的问题
+ *         现在 Experiment、Trial、Screen 和 xxxBuilder 都需要自行 initXXX
  */
 public class SimpleExperimentHelperImpl implements ExperimentHelper {
 
@@ -68,6 +73,8 @@ public class SimpleExperimentHelperImpl implements ExperimentHelper {
     private final Scene scene = new Scene(drawWelcomeContent(),400,300);
 
     private Screen currentScreen;
+
+    private boolean isInited = false;
 
     private static final String COPYRIGHT =
             "The copyright of this software belongs to the Virtual Behavior Laboratory of the School of Psychology, Central China Normal University. " +
@@ -109,6 +116,8 @@ public class SimpleExperimentHelperImpl implements ExperimentHelper {
         else this.runner = runner;
         //注入 Experiment 对象
         this.experiment = ((Experiment) Class.forName(this.runner.getExperimentClassName()).newInstance());
+        //初始化 Experiment 组件
+        this.experiment.initExperiment();
         //注入依赖
         experiment.initScreensAndTrials(scene);
         //设置状态、单任务定时器策略，定时器执行的具体行为
@@ -146,7 +155,19 @@ public class SimpleExperimentHelperImpl implements ExperimentHelper {
         //首先处理页面遗留问题
         try {
             currentScreen.callWhenLeavingScreen();
-        } catch (Exception e) { logger.warn(e.getMessage()); }
+        } catch (Exception e) {
+            logger.warn(e.toString());
+            StringWriter writer = new StringWriter();
+            PrintWriter printWriter = new PrintWriter(writer);
+            e.printStackTrace(printWriter);
+            logger.warn(writer.toString());
+            try {
+                writer.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+            printWriter.close();
+        }
         //之后重载页面
         currentScreen = experiment.getScreen();
         logger.debug("Current Screen is " + currentScreen);
@@ -157,7 +178,19 @@ public class SimpleExperimentHelperImpl implements ExperimentHelper {
                 scene.setRoot(currentScreen.layout);
                 try {
                     currentScreen.callWhenShowScreen();
-                } catch (Exception e) { logger.warn(e.getMessage()); }
+                } catch (Exception e) {
+                    logger.warn(e.toString());
+                    StringWriter writer = new StringWriter();
+                    PrintWriter printWriter = new PrintWriter(writer);
+                    e.printStackTrace(printWriter);
+                    logger.warn(writer.toString());
+                    try {
+                        writer.close();
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
+                    printWriter.close();
+                }
             });
             //添加时间监听器
             Platform.runLater(()-> setTimer(currentScreen.duration));
@@ -264,13 +297,23 @@ public class SimpleExperimentHelperImpl implements ExperimentHelper {
      * 在 initExperiment 处理过 Scene 后，同时为 Scene 注册 EventHandler，并启动相关线程。
      * 同时为 Stage 设置默认的 Scene，并且设置一些 Stage 的方法，比如样式表、尺寸大小、关闭行为、全屏行为，但是不显示
      * @param stage 需要装饰的 Stage
-     * @return Scene
      */
-    @Override public Scene initStage(Stage stage) {
+    @Override public void initStage(Stage stage) {
         initEventHandler(runner, scene);
         initStageImpl(stage);
         stage.setScene(scene);
-        return this.scene;
+    }
+
+    @Override
+    public Experiment getExperiment() {
+        if (isInited) return this.experiment;
+        else throw new RuntimeException("请首先调用 initStage 完成类的初始化");
+    }
+
+    @Override
+    public Scene getScene() {
+        if (isInited) return this.scene;
+        else throw new RuntimeException("请首先调用 initStage 完成类的初始化");
     }
 
     /**
@@ -292,10 +335,12 @@ public class SimpleExperimentHelperImpl implements ExperimentHelper {
         //设置样式表文件
         scene.getStylesheets().add(
                 Objects.requireNonNull(getClass().getClassLoader().getResource("style.css")).toExternalForm());
-
+        scene.getRoot().setStyle("-fx-background-color: transparent;-fx-border-color: transparent;");
+        scene.setFill(Color.GRAY);
         stage.setOnCloseRequest(event -> {
             experiment.saveData();
             System.exit(0);
         });
+        isInited = true;
     }
 }

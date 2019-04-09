@@ -4,5 +4,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 public interface ExperimentHelper {
-    Scene initStage(Stage stage);
+    void initStage(Stage stage);
+    Experiment getExperiment();
+    Scene getScene();
 }

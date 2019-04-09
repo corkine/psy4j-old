@@ -1,4 +1,4 @@
-package com.mazhangjing.lab.voice;
+package com.mazhangjing.lab.sound;
 
 import javafx.concurrent.Task;
 import org.slf4j.Logger;

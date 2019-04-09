@@ -26,7 +26,7 @@ public class WaveUtil {
         return output;
     }
 
-    public static void playForDuration(int soundFrequency, int soundDurationMs, int allDurationMS, int spaceMS)
+    public static void playForDuration(double soundFrequency, int soundDurationMs, int allDurationMS, int spaceMS)
             throws InterruptedException, LineUnavailableException {
         final AudioFormat af = new AudioFormat(SAMPLE_RATE, 8, 1, true, true);
         SourceDataLine line = AudioSystem.getSourceDataLine(af);
@@ -44,7 +44,7 @@ public class WaveUtil {
         line.close();
     }
 
-    public static void playForDuration(int soundFrequency, int soundDurationMs,
+    public static void playForDuration(double soundFrequency, int soundDurationMs,
                                          int allDurationMS, int randomSpaceFrom, int randomSpaceTo)
             throws LineUnavailableException, InterruptedException {
         final AudioFormat af = new AudioFormat(SAMPLE_RATE, 8, 1, true, true);
