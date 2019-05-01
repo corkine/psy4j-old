@@ -30,7 +30,7 @@ class TrialA extends Trial {
   /** 你应该实现这个方法，用来保存一组 Screen 对象到 screens 中，保存 Trial 的信息到 information 中。 */
   override def initTrial(): Trial = {
 
-    val fixScreen = ScreenBuilder.named("Fixed Screen").showIn(1000).setScene(() => {
+    val fixScreen = new ScreenBuilder().named("Fixed Screen").showIn(1000).setScene(() => {
       val pane = new BorderPane()
       val fix = new Text("+")
       fix.setFont(Font.font(50))
@@ -38,7 +38,7 @@ class TrialA extends Trial {
       pane
     }).build()
 
-    val stiScreen = ScreenBuilder.named("Sti Screen").showIn(5000).setScene(() => {
+    val stiScreen = new ScreenBuilder().named("Sti Screen").showIn(5000).setScene(() => {
       val box = new HBox()
       box.setAlignment(Pos.CENTER)
       box.setSpacing(200)

@@ -5,6 +5,7 @@ import java.nio.file.{Path, Paths}
 import java.time.{Instant, LocalDateTime}
 import java.util
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 
 import MzjExperiment._
 import com.sun.xml.internal.ws.developer.Serialization
@@ -16,6 +17,9 @@ import scala.beans.BeanProperty
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 //节律条件、点的个数
+/**
+  * 2019年04月12日 使用了 JavaFx Bound API 检测点的重叠冲突
+  */
 class TrialData(@BeanProperty var condition: Int, @BeanProperty var pointNumber: Int)
   extends Serializable {
   @BeanProperty var isExercise = false
@@ -27,7 +31,7 @@ class TrialData(@BeanProperty var condition: Int, @BeanProperty var pointNumber:
   @BeanProperty var answer: Int = _
 
   override def toString: String = {
-    s"[TrialData] Task $taskCondition, Condition $condition, PointNumber $pointNumber, ActionTime $actionTime"
+    s"[TrialData] Task $taskCondition, Condition $condition, PointNumber $pointNumber, ActionTime $actionTime, RecordInstant $recordInstant"
   }
 }
 
@@ -163,11 +167,11 @@ class ExperimentDataWrapper {
 }
 
 class Points(allPointNumber: Int = 10, blackPointNumber: Int, pointRadius: Int = 12,
-             XRange: (Int, Int), YRange: (Int, Int), isReal: Boolean = true, marginPixel: Int = 5) {
+             XRange: (Double, Double), YRange: (Double, Double), isReal: Boolean = true, marginPixel: Int = 5) {
   var points: ArrayBuffer[Circle] = ArrayBuffer[Circle]()
   //先处理位置问题
-  val centerXRange: (Int, Int) = (XRange._1 + pointRadius, XRange._2 - pointRadius)
-  val centerYRange: (Int, Int) = (YRange._1 + pointRadius, YRange._2 - pointRadius)
+  val centerXRange: (Int, Int) = ((XRange._1 + pointRadius).toInt, (XRange._2 - pointRadius).toInt)
+  val centerYRange: (Int, Int) = ((YRange._1 + pointRadius).toInt, (YRange._2 - pointRadius).toInt)
   1 to allPointNumber foreach( _ => {
     val circle = new Circle()
     circle.setRadius(pointRadius)
@@ -178,16 +182,19 @@ class Points(allPointNumber: Int = 10, blackPointNumber: Int, pointRadius: Int =
       while (conflict) {
         x = Random.nextInt(centerXRange._2 - centerXRange._1) + centerXRange._1
         y = Random.nextInt(centerYRange._2 - centerYRange._1) + centerYRange._1
-        conflict = points.exists(point => {
+        circle.setCenterX(x)
+        circle.setCenterY(y)
+        /*conflict = points.exists(point => {
           val pX = point.getCenterX
           val pY = point.getCenterY
           Math.abs(pX - x) < pointRadius + marginPixel || Math.abs(pY - y) < pointRadius + marginPixel
-          //Math.sqrt(Math.pow(Math.abs(y - pY), 2) * Math.pow(Math.abs(x - pX),2)) < pointRadius
+          //Math.sqrt(Math.pow(Math.abs(y - pY), 2) * Math.pow(Math.abs(x - pX),2)) < pointRadius - marginPixel
+        })*/
+        conflict = points.exists(point => {
+          point.getBoundsInLocal.intersects(circle.getBoundsInLocal)
         })
       }
       assert(x != 0); assert(y != 0)
-      circle.setCenterX(x)
-      circle.setCenterY(y)
     } else {
       circle.setCenterX(20)
       circle.setCenterY(20)
@@ -198,39 +205,4 @@ class Points(allPointNumber: Int = 10, blackPointNumber: Int, pointRadius: Int =
     points(i).setFill(Color.BLACK)
   })
   points = Random.shuffle(points)
-}
-
-object TestPoints {
-  def main(args: Array[String]): Unit = {
-    val points = new Points(10,3,10,(0,1000),(0,1000)).points
-    println(points)
-  }
-}
-
-//如果要使用 YAML，最好使用 JavaBean，实在不行，要用 Scala Bean，构造器可以，但是所有需要保存的属性都不能写成 val
-//此外，必须为其添加 @BeanProperty 注解
-object TestYAML {
-  def main(args: Array[String]): Unit = {
-    val experimentData = new ExperimentData()
-    experimentData.setUserId(233)
-    experimentData.setUserName("Corkine")
-    experimentData.setInformation("Nothing")
-    experimentData.setGender(1)
-    val trialdata = new TrialData(1,23)
-    trialdata.setActionTime(23333333333L)
-    trialdata.setStartInstant(Instant.now())
-    trialdata.setEndInstant(Instant.now())
-    experimentData.getTrialData.add(trialdata)
-    val name = experimentData.userName
-    val id = experimentData.userId
-    val str = name + "_" + id + ".yml"
-    val path = Paths.get(str)
-    ExperimentData.persistToYAML(path, experimentData)
-    val data = ExperimentData.loadWithYML(path)
-    println(data)
-    ExperimentData.persistToCSV(Paths.get("corkine_233.csv"), data)
-    ExperimentData.persistToObject(Paths.get("corkine_233.obj"),data)
-    val data2 = ExperimentData.loadWithObject(Paths.get("corkine_233.obj"))
-    println(data2)
-  }
 }

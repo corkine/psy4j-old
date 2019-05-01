@@ -25,7 +25,7 @@ import scala.util.Random
   * @usecase  ScreenBuilder 可以用在 Trial 中，警告：在 Trial 中不能依靠 Trial 的 getExperiment 等函数设置入参，因为调用 build 的时候
   *           此函数的当前值会被获取，且入参会被作为闭包，固定为空，这导致了严重的错误。
   * @usecase  ScreenBuilder 可以用在 Experiment 中，这时候，可以任意使用外部闭包，比如使用 this 指代 Experiment 对象
-  * @usecase  ScreenBuilder
+  * @usecase  new ScreenBuilder()
   *             .named("信息收集")
   *             .showIn(SET.INFO_SET_MS.getValue())
   *             .setScene(() -> {
@@ -50,8 +50,10 @@ import scala.util.Random
   *             .build())
   *
   *  @note 2019-04-03 去除了 ScreenBuilder 和 TrialBuilder 的 init 操作
+  *        2019-04-14 修复了 ScreenBuilder 的 object 造成的严重的 preShowAction、eventAction、afterShowAction 错误问题
   */
-object ScreenBuilder extends Builder[Screen] {
+class ScreenBuilder extends Builder[Screen] {
+
   private var name = ""
   private var showTime = 0
   private var parent: Parent = _
@@ -64,7 +66,7 @@ object ScreenBuilder extends Builder[Screen] {
     * @param name 字符串名称，比如"刺激展示屏幕"
     * @return ScreenBuilder
     */
-  def named(name:String): ScreenBuilder.type = {
+  def named(name:String): this.type = {
     this.name = name; this
   }
 
@@ -73,7 +75,7 @@ object ScreenBuilder extends Builder[Screen] {
     * @param duration 时长，毫秒
     * @return ScreenBuilder
     */
-  def showIn(duration:Int): ScreenBuilder.type = {
+  def showIn(duration:Int): this.type = {
     this.showTime = duration; this
   }
 
@@ -85,7 +87,7 @@ object ScreenBuilder extends Builder[Screen] {
     * @param layout JavaFx 的 Scene 内容接口对象，比如 HBox BorderPane 实例等
     * @return ScreenBuilder
     */
-  def setScene(layout: Parent): ScreenBuilder.type = {
+  def setScene(layout: Parent): this.type = {
     this.parent = layout; this
   }
 
@@ -97,7 +99,7 @@ object ScreenBuilder extends Builder[Screen] {
     * @param opLayout JavaFx 的 Scene 内容对象接口，比如 HBox BorderPane 实例等
     * @return ScreenBuilder
     */
-  def setScene(opLayout: () => Parent): ScreenBuilder.type = {
+  def setScene(opLayout: () => Parent): this.type = {
     this.parent = opLayout(); this
   }
   //不能调用带参函数，因为调用时外部依赖形成闭包，而这时 Exp 不存在，导致 Scene、Experiment 为空
@@ -113,7 +115,7 @@ object ScreenBuilder extends Builder[Screen] {
     * @param eventAction JavaAPI，接受事件、当前实验、当前场景三个参数，进行操作，返回 null。
     * @return ScreenBuilder
     */
-  def ifEventThen(eventAction: (Event, Experiment, Scene, Screen) => Unit): ScreenBuilder.type = {
+  def ifEventThen(eventAction: (Event, Experiment, Scene, Screen) => Unit): this.type = {
     this.eventAction += eventAction; this
   }
 
@@ -124,7 +126,7 @@ object ScreenBuilder extends Builder[Screen] {
     * @param doAction JavaAPI，接受当前实验、当前场景两个参数，进行操作，返回 null。
     * @return ScreenBuilder
     */
-  def beforeShowThen(doAction: (Experiment, Scene) => Unit): ScreenBuilder.type = {
+  def beforeShowThen(doAction: (Experiment, Scene) => Unit): this.type = {
     this.preShowAction += doAction; this
   }
 
@@ -133,7 +135,7 @@ object ScreenBuilder extends Builder[Screen] {
     * @return ScreenBuilder
     * @deprecated 此 API 尚未被实现
     */
-  def afterShowThen(doAction: (Experiment, Scene) => Unit): ScreenBuilder.type = {
+  def afterShowThen(doAction: (Experiment, Scene) => Unit): this.type = {
     this.afterShowAction += doAction; this
   }
 

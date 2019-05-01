@@ -10,9 +10,9 @@ import java.util.concurrent.TimeUnit;
 /**
  * @implNote
  * 2019-04-02
- * WaveUtil 用来提供纯音，playForDuration 用来生成连续或者随机的指定声音频率数、声音时长、声音总时长、声音间隔的纯音
+ * SimpleShortToneUtilsImpl 用来提供纯音，playForDuration 用来生成连续或者随机的指定声音频率数、声音时长、声音总时长、声音间隔的纯音
  */
-public class WaveUtil {
+public class SimpleShortToneUtilsImpl implements ToneUtils {
 
     public static final int SAMPLE_RATE = 16 * 1024;
 
@@ -26,7 +26,7 @@ public class WaveUtil {
         return output;
     }
 
-    public static void playForDuration(double soundFrequency, int soundDurationMs, int allDurationMS, int spaceMS)
+    public void playForDuration(double soundFrequency, int soundDurationMs, int allDurationMS, int spaceMS)
             throws InterruptedException, LineUnavailableException {
         final AudioFormat af = new AudioFormat(SAMPLE_RATE, 8, 1, true, true);
         SourceDataLine line = AudioSystem.getSourceDataLine(af);
@@ -44,7 +44,7 @@ public class WaveUtil {
         line.close();
     }
 
-    public static void playForDuration(double soundFrequency, int soundDurationMs,
+    public void playForDuration(double soundFrequency, int soundDurationMs,
                                          int allDurationMS, int randomSpaceFrom, int randomSpaceTo)
             throws LineUnavailableException, InterruptedException {
         final AudioFormat af = new AudioFormat(SAMPLE_RATE, 8, 1, true, true);
@@ -64,6 +64,5 @@ public class WaveUtil {
         line.drain();
         line.close();
     }
-
 }
 

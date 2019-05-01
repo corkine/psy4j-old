@@ -12,6 +12,7 @@ import javafx.stage.{Screen, Stage}
 
 /**
   * 2019-04-01 添加了快速根据英寸数和比例得到屏幕长边厘米数的方法
+  * 2019-04-11 修复了 iScreen 计算的错误问题
   */
 class DataConvert extends Application {
 
@@ -183,15 +184,14 @@ class DataConvert extends Application {
   def doChange(): Unit = {
     val inch = (inchText.getText match {
       case "" => "27"
-      case dig if Pattern.compile("^[-\\+]?[\\d]*$").matcher(dig).matches() => dig
-      case _ => "27"
-    }).toInt
+      case other  => other
+    }).toDouble
     val ratio = ratioChoose.getSelectionModel.getSelectedItem match {
       case i if i == R1610 => 16.0/10
       case a if a == R169 => 16.0/9
       case b if b == R43 => 4.0/3
     }
-    println(inch, ratio)
+    println(inch)
     val result = Math.sqrt(Math.pow(2.54 * inch,2)/(1 + Math.pow(ratio,2))) * ratio
     screenCM.setText(result.toString)
   }
@@ -199,7 +199,7 @@ class DataConvert extends Application {
   val scene = new Scene(root, 700, 500)
 
   override def start(primaryStage: Stage): Unit = {
-    primaryStage.setTitle("像素和角度转换 - A Part of Psy4J - 0.1.4")
+    primaryStage.setTitle("像素和角度转换 - A Part of Psy4J - 0.1.5")
     primaryStage.setScene(scene)
     initBeforeShow()
     primaryStage.show()
@@ -207,14 +207,15 @@ class DataConvert extends Application {
 
   def initBeforeShow(): Unit = {
     val bounds = Screen.getPrimary.getVisualBounds
-    val dpi = Screen.getPrimary.getDpi
+    val dpi = javafx.stage.Screen.getPrimary.getDpi
+    println(dpi)
     val (dep, rate) = getFreshRate
     currentScreenInfo.setText("Width × Height : " + bounds.getWidth + " × " + bounds.getHeight + " px\n\n" +
       "DPI : " + dpi.toString + ", Width（Computed）： " + ((bounds.getWidth/dpi) * 2.54).formatted("%.3f") + " cm\n\n" +
       "BitDepth: " + dep + " bit , FreshRate: " + rate + " hz")
     screenPX.setText(bounds.getWidth.toString)
     screenCM.setText(((bounds.getWidth/dpi) * 2.54).formatted("%.3f"))
-    peopleToScreenCM.setText("45")
+    peopleToScreenCM.setText("57")
     objectPx.setText("56")
     peopleToScreenCM.requestFocus()
     peopleToScreenCM.selectAll()

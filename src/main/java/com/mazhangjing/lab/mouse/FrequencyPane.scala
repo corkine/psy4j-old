@@ -2,7 +2,6 @@ package com.mazhangjing.lab.mouse
 
 import java.util.concurrent.TimeUnit
 
-import javafx.application.Application
 import javafx.beans.property.{SimpleBooleanProperty, SimpleDoubleProperty, SimpleIntegerProperty, SimpleStringProperty}
 import javafx.concurrent.Task
 import javafx.geometry.{Insets, Pos}
@@ -15,8 +14,7 @@ import javafx.scene.text.{Font, Text}
 import javafx.scene.{Parent, Scene}
 import javafx.stage.Stage
 
-class FrequencyDetectionDemo extends Application {
-
+class FrequencyPane {
   val freq = new SimpleDoubleProperty(0.0)
 
   var showWarn = new SimpleBooleanProperty(false)
@@ -29,6 +27,8 @@ class FrequencyDetectionDemo extends Application {
 
   var count = new SimpleIntegerProperty(0)
 
+  val angle = new Rectangle()
+
   var start = 0.0
 
   val root: Parent = {
@@ -36,7 +36,7 @@ class FrequencyDetectionDemo extends Application {
     f.setAlignment(Pos.CENTER_LEFT)
     f.setPadding(new Insets(0,0,0,40))
     f.setSpacing(20)
-    val angle = new Rectangle()
+    angle.setId("light")
     angle.setFill(Color.DARKGRAY)
     angle.setWidth(80)
     angle.setHeight(100)
@@ -67,6 +67,7 @@ class FrequencyDetectionDemo extends Application {
     text.setLineSpacing(7)
     text.setWrappingWidth(300)
     val info = new Label("频率： Hz")
+    info.setId("hzLabel")
     val warn = new Label("请保持鼠标位置不动！"); warn.setTextFill(Color.RED)
     warn.visibleProperty().bind(showWarn)
     showWarn.addListener(e => {
@@ -129,9 +130,9 @@ class FrequencyDetectionDemo extends Application {
     }
   })
 
-  override def start(stage: Stage): Unit = {
-    stage.setTitle("Frequency Detection - A Part of Psy4J")
-    stage.setScene(scene)
-    stage.show()
+  def decorateStage(mainStage: Stage): Stage = {
+    mainStage.setTitle("Frequency Detection - A Part of Psy4J")
+    mainStage.setScene(scene)
+    mainStage
   }
 }

@@ -4,15 +4,15 @@ import org.junit.Test;
 
 import javax.sound.sampled.LineUnavailableException;
 
-public class WaveUtilTest {
+public class SimpleShortToneUtilsImplTest {
 
     @Test
     public void A_playForDuration() throws LineUnavailableException, InterruptedException {
-        WaveUtil.playForDuration(1000, 20, 10000, 0, 1000);
+        new SimpleShortToneUtilsImpl().playForDuration(300, 1000, 10000, 0, 1000);
     }
 
     @Test public void B_playForDuration() throws LineUnavailableException, InterruptedException {
-        WaveUtil.playForDuration(1000, 20, 10000, 1000);
+        new SimpleShortToneUtilsImpl().playForDuration(300, 1000, 10000, 1000);
     }
 
 }

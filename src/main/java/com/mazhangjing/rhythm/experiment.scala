@@ -8,7 +8,8 @@ import java.util.concurrent.TimeUnit
 
 import com.mazhangjing.lab.LabUtils._
 import com.mazhangjing.lab._
-import com.mazhangjing.lab.sound.{Capture, WaveUtil}
+import com.mazhangjing.lab.sound._
+import com.mazhangjing.lab.unit.iScreen
 import com.mazhangjing.rhythm.MzjExperiment._
 import javafx.application.Application
 import javafx.beans.property.SimpleStringProperty
@@ -16,7 +17,7 @@ import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.collections.FXCollections
 import javafx.concurrent.Task
 import javafx.event.{Event, EventType}
-import javafx.geometry.{Insets, Pos}
+import javafx.geometry.{Insets, Pos, Rectangle2D}
 import javafx.scene._
 import javafx.scene.control.Alert.AlertType
 import javafx.scene.control._
@@ -31,11 +32,21 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
+/**
+  * 在 2019-04-15 以及之前的实验中，Log 日志中的 节律 Low 指的是 节律 Height，反之亦然。2019-04-15 修正了此 Bug。
+  * 2019年04月15日 修复了 Configure 点选后取消点选的 BUG
+  */
 object MzjExperiment {
+  val screenWidthPx: Double = javafx.stage.Screen.getPrimary.getVisualBounds.getWidth
+  val screenHeightPx: Double = javafx.stage.Screen.getPrimary.getVisualBounds.getHeight
+  val screenWidthCm: Double = (javafx.stage.Screen.getPrimary.getVisualBounds.getWidth/javafx.stage.Screen.getPrimary.getDpi) * 2.54
+  val peopleToScreenCm = 57
+  val is = iScreen(screenWidthPx, screenWidthCm, peopleToScreenCm)
+
   var IS_DEBUG = true //关闭后，严格执行实验，开启后，且开启 FAST_DEBUG，规则最为宽松，且关闭 FAST_DEBUG，仅仅是允许键盘替代语音
   var IS_FAST_DEBUG = true //开启后，规则最为宽松，关闭后，相比较正式实验，仅允许键盘替代语音反应计数
   var TRIAL_COUNT = 20 //真实的 Trial 重复数
-  var TEST_TRIAL_COUNT = 2 //测试的 Trial 重复数
+  var TEST_TRIAL_COUNT = 1 //测试的 Trial 重复数
   val PEOPLE_TO_SCREEN_CM = 57 //人距离屏幕的 CM 数
   val INTRO_MAX_KEEP = 2000000 //指导语最长超时
   val USE_RANDOM_TRIAL_ORDER = true //真实模式随机计数和感数 Block
@@ -44,20 +55,32 @@ object MzjExperiment {
   var ALL_CROSS_KEEP_TIME = 8000 //声音-注视点刺激呈现的时长
   var SOUND_TIME_MS = 20 //单个声音呈现的时长
   val SOUND_RANDOM_MAX_SPACE_MS = 130 //随机无节律声音间隔的差值，根据文献设置
-  val SUBJECT_HZ = 3.01 //被试的自然频率
-  val SUBJECT_HEIGHT_HZ_RATIO = 1.25
-  val SUBJECT_LOWER_HZ_RATIO = 0.75
+  var SUBJECT_HZ = 0.0 //被试的自然频率
+  val SUBJECT_HEIGHT_HZ_RATIO = 1.5//1.25
+  val SUBJECT_LOWER_HZ_RATIO = 0.5//0.75
+  val SOUND_HZ = 300 //声音的频率
   val COUNTING_MAX_KEEP_TIME_MS = 100000 //计数阶段刺激最长呈现时长
   val STIMULATE_KEEP_TIME_MS = 200 //感数阶段刺激呈现时长
-  val COUNTING_ACTION_SCREEN_KEEP_TIME_MS = 2000
+  val COUNTING_ACTION_SCREEN_KEEP_TIME_MS = 1000
   val ESTIMATE_ACTION_SCREEN_KEEP_TIME_MS = 4000 //感数阶段最长允许反应时间，之后进入下一个试次
   val MASK_SCREEN_KEEP_TIME_MS = 150 //掩蔽刺激呈现时长
-  val CIRCLE_RADIUS_PIXEL = 12 //点的半径，像素个数
+  val CIRCLE_RADIUS_PIXEL: Double = is.degToScreenPx(1.2) //点的半径，像素个数
   val WIDTH_RATIO = 0.5 //点的范围所在的屏幕宽度的比例
   val HEIGHT_RATIO = 0.5 //点的范围所在的屏幕高度的比例
-  val MAX_REST_KEEP_TIME = 100000 //最长休息时间，最短时间由类自行控制
-  val BOUND_WIDTH: (Int, Int) = getBound(WIDTH_RATIO, HEIGHT_RATIO)._1
-  val BOUND_HEIGHT: (Int, Int) = getBound(WIDTH_RATIO, HEIGHT_RATIO)._2
+
+  val MAX_REST_KEEP_TIME_MS = 10000000 //最长休息时间，最短时间由类自行控制
+  val SIMPLE_REST_MIN_SECONDS = 60
+  val EXPERIMENT_MIN_REST_SECONDS = 120
+
+  val BOUND_WIDTH: (Double, Double) = getBound(WIDTH_RATIO, HEIGHT_RATIO)._1
+  val BOUND_HEIGHT: (Double, Double) = getBound(WIDTH_RATIO, HEIGHT_RATIO)._2
+  var SOUND_IMPL_CLASS: Class[_] = _
+
+  def getSoundImpl: ToneUtils = {
+    if (SOUND_IMPL_CLASS != null) {
+      SOUND_IMPL_CLASS.newInstance().asInstanceOf[ToneUtils]
+    } else throw new RuntimeException("没有可选的 SoundImpl 实现")
+  }
 
   var JUST_ESTIMATE = false
   var JUST_COUNTING = false
@@ -75,7 +98,7 @@ object MzjExperiment {
 
   def initExperiment(experimentData: ExperimentData, conditionSet: Set[Int]): Unit = {
     if (IS_DEBUG && IS_FAST_DEBUG) {
-      TRIAL_COUNT = 4
+      if (TRIAL_COUNT > 2) TRIAL_COUNT = 2
       JUST_COUNT_FIRST = false
       //保证训练时长长于随机红色十字最长时长
       ALL_CROSS_KEEP_TIME = 1500
@@ -91,13 +114,10 @@ object MzjExperiment {
     * @param heightRatio 希望使用的中心的长的比例
     * @return
     */
-  private def getBound(widthRatio: Double, heightRatio: Double): ((Int, Int),(Int, Int)) = {
-    val width = javafx.stage.Screen.getPrimary.getVisualBounds.getWidth.toInt
-    val height = javafx.stage.Screen.getPrimary.getVisualBounds.getHeight.toInt
-    val realWidth = width * widthRatio
-    val realHeight = height * heightRatio
-    ((((width - realWidth)/2).toInt, ((width - realWidth)/2 + realWidth/2).toInt),
-      (((height - realHeight)/2).toInt, ((height - realHeight)/2 + realHeight/2).toInt))
+  private def getBound(widthRatio: Double, heightRatio: Double): ((Double, Double),(Double, Double)) = {
+    val needBorderWidthPx: Double = is.degToScreenPx(16)
+    (((screenWidthPx - needBorderWidthPx)/2, (screenWidthPx - needBorderWidthPx)/2 + needBorderWidthPx),
+      ((screenHeightPx - needBorderWidthPx)/2, (screenHeightPx - needBorderWidthPx)/2 + needBorderWidthPx))
   }
 
   /**
@@ -118,8 +138,8 @@ object MzjExperiment {
       //如果是正式实验，全部数字
       if (randomGetNumber == -1) {
         numberCondition foreach( condition2 => {
-          val data = new TrialData(condition1, condition2)
           1 to randomRepeat foreach( _ => {
+            val data = new TrialData(condition1, condition2)
             buffer.append(data)
           })
         })
@@ -127,8 +147,8 @@ object MzjExperiment {
         //如果是练习，则随机选择 randomGetNumber 个数字
         val ints = Random.shuffle(numberCondition).toBuffer.slice(0, randomGetNumber)
         ints foreach( condition2 => {
-          val data = new TrialData(condition1, condition2)
           1 to randomRepeat foreach( _ => {
+            val data = new TrialData(condition1, condition2)
             buffer.append(data)
           })
         })
@@ -195,7 +215,7 @@ class MzjExperiment extends Experiment {
         initEstimateTrial(DO_MULTIPLE_CONDITION_NUMBERS)
       } else {
         initCountingTrial(DO_MULTIPLE_CONDITION_NUMBERS)
-        trials.add(new RestTrial(60).initTrial())
+        trials.add(new RestTrial().initTrial())
         initEstimateTrial(DO_MULTIPLE_CONDITION_NUMBERS)
       }
     } else {
@@ -205,7 +225,7 @@ class MzjExperiment extends Experiment {
         initEstimateTrial(DO_MULTIPLE_CONDITION_NUMBERS)
       } else {
         initEstimateTrial(DO_MULTIPLE_CONDITION_NUMBERS)
-        trials.add(new RestTrial(60).initTrial())
+        trials.add(new RestTrial().initTrial())
         initCountingTrial(DO_MULTIPLE_CONDITION_NUMBERS)
       }
     }
@@ -257,8 +277,12 @@ class MzjExperiment extends Experiment {
     logger.info("Saving Experiment")
     println(experimentData)
     val id = experimentData.userId
+    val name = experimentData.userName match {
+      case null => "NoName"
+      case other => other
+    }
     ExperimentData.persistToObject(Paths.get(id + ".obj"), experimentData)
-    ExperimentData.persistToCSV(Paths.get(id + ".csv"), experimentData)
+    ExperimentData.persistToCSV(Paths.get(id + "_" + name + ".csv"), experimentData)
     try {
       logger.info("Moving Log data to id.log now...")
       val oldFile = Paths.get(System.getProperty("user.dir") + File.separator + "log" + File.separator + "logFile.log").toFile
@@ -280,14 +304,15 @@ class MzjExperiment extends Experiment {
 class CountingTrial(val trialData: TrialData, val experimentData: ExperimentData, val needRestScreen: Boolean) extends Trial {
 
   override def initTrial(): Trial = {
+    if (needRestScreen) screens.add(new RestScreen(SIMPLE_REST_MIN_SECONDS).initScreen())
     //学习、测验、等待，其中测验用于处理回调，保存数据，data 中刺激开始的时候在 TaskScreen 开始的时候
     val learn_screen = new VoiceTrainScreen(trialData, experimentData)
     val task_screen = new TaskScreen(true,false, trialData, experimentData)
-    val action_wait_screen = ScreenBuilder.named("试次等待屏幕")
+    val action_wait_screen = new ScreenBuilder().named("试次等待屏幕")
       .showIn(COUNTING_ACTION_SCREEN_KEEP_TIME_MS).setScene({
       val root = new HBox()
       root.setAlignment(Pos.CENTER)
-      val text = new Text("...")
+      val text = new Text("")
       text.setFont(Font.font(30))
       root.getChildren.addAll(text)
       root.setCursor(Cursor.NONE)
@@ -299,7 +324,6 @@ class CountingTrial(val trialData: TrialData, val experimentData: ExperimentData
     screens.add(learn_screen.initScreen())
     screens.add(task_screen.initScreen())
     screens.add(action_wait_screen.initScreen())
-    if (needRestScreen) screens.add(new RestScreen().initScreen())
     information = "Counting Trial"
     this
   }
@@ -313,17 +337,17 @@ class CountingTrial(val trialData: TrialData, val experimentData: ExperimentData
 class EstimateTrial(val trialData: TrialData, val experimentData: ExperimentData, val needRestScreen: Boolean) extends Trial {
 
   override def initTrial(): Trial = {
+    if (needRestScreen) screens.add(new RestScreen(SIMPLE_REST_MIN_SECONDS).initScreen())
     //练习、刺激、掩蔽、反应
     //区分计数，这里的开始时刻是在 VoiceTrainScreen 开始，在 ActionWait 记录（反应时是从呈现刺激到反应的时间），在 ActionWait 终止
     val learn_screen = new VoiceTrainScreen(trialData, experimentData)
     val task_screen = new TaskScreen(false,true, trialData, experimentData)
-    val mask_screen = ScreenBuilder.named("掩蔽刺激屏幕").setScene(ShelterUtils.getRandomShelter).showIn(MASK_SCREEN_KEEP_TIME_MS).build()
+    val mask_screen = new ScreenBuilder().named("掩蔽刺激屏幕").setScene(ShelterUtils.getRandomShelter).showIn(MASK_SCREEN_KEEP_TIME_MS).build()
     val action_wait_screen = new EstimateActionRequireScreen(trialData, experimentData)
     screens.add(learn_screen.initScreen())
     screens.add(task_screen.initScreen())
     screens.add(mask_screen.initScreen())
     screens.add(action_wait_screen.initScreen())
-    if (needRestScreen) screens.add(new RestScreen().initScreen())
     information = "Estimate Trial"
     this
   }
@@ -342,30 +366,32 @@ class VoiceTrainScreen(val trialData: TrialData, val experimentData: ExperimentD
 
   val cross = new Text("+")
 
+  val toneUtils: ToneUtils = getSoundImpl
+
   private def playIt(condition: Int): Unit = {
     val runnable = new Runnable {
       override def run(): Unit = {
         if (condition == 2)
-          WaveUtil.playForDuration(
-            (experimentData.prefHz * SUBJECT_HEIGHT_HZ_RATIO).toInt,
+          toneUtils.playForDuration(
+            SOUND_HZ,
             SOUND_TIME_MS,
             showAndUntilToRedCrossTime,
-            ((1000 - SUBJECT_HZ * SOUND_TIME_MS)/SUBJECT_HZ).toInt)
+            ((1000 - SUBJECT_HZ * SOUND_TIME_MS)/(SUBJECT_HZ * SUBJECT_HEIGHT_HZ_RATIO)).toInt)
         else if (condition == 3)
-          WaveUtil.playForDuration(
-            experimentData.prefHz,
+          toneUtils.playForDuration(
+            SOUND_HZ,
             SOUND_TIME_MS,
             showAndUntilToRedCrossTime,
             ((1000 - SUBJECT_HZ * SOUND_TIME_MS)/SUBJECT_HZ).toInt)
         else if (condition == 4)
-          WaveUtil.playForDuration(
-            (experimentData.prefHz * SUBJECT_LOWER_HZ_RATIO).toInt,
+          toneUtils.playForDuration(
+            SOUND_HZ,
             SOUND_TIME_MS,
             showAndUntilToRedCrossTime,
-            ((1000 - SUBJECT_HZ * SOUND_TIME_MS)/SUBJECT_HZ).toInt)
+            ((1000 - SUBJECT_HZ * SOUND_TIME_MS)/(SUBJECT_HZ * SUBJECT_LOWER_HZ_RATIO)).toInt)
         else if (condition == 5)
-          WaveUtil.playForDuration(
-            experimentData.prefHz,
+          toneUtils.playForDuration(
+            SOUND_HZ,
             SOUND_TIME_MS,
             showAndUntilToRedCrossTime,
             0,
@@ -388,7 +414,7 @@ class VoiceTrainScreen(val trialData: TrialData, val experimentData: ExperimentD
   override def initScreen(): Screen = {
     duration = ALL_CROSS_KEEP_TIME
     val root = new HBox(); root.setAlignment(Pos.CENTER)
-    cross.setFont(Font.font(100))
+    cross.setFont(Font.font(30))
     cross.setFill(Color.BLACK)
     root.getChildren.add(cross)
     layout = root
@@ -399,11 +425,11 @@ class VoiceTrainScreen(val trialData: TrialData, val experimentData: ExperimentD
       } else if (condition == 5) {
         "非节律条件屏幕"
       } else if (condition == 2) {
-        "节律 Low 条件屏幕"
+        "节律 Height 条件屏幕"
       } else if (condition == 3) {
         "节律 Normal 条件屏幕"
       } else if (condition == 4) {
-        "节律 Height 条件屏幕"
+        "节律 Low 条件屏幕"
       } else {
         ""
       }
@@ -413,50 +439,6 @@ class VoiceTrainScreen(val trialData: TrialData, val experimentData: ExperimentD
   }
 
   override def eventHandler(event: Event, experiment: Experiment, scene: Scene): Unit = { }
-}
-
-class IntroTrial(val intro:String) extends Trial {
-
-  override def initTrial(): Trial = {
-    screens.add(new IntroScreen(intro).initScreen())
-    information = "指导语试次"
-    this
-  }
-}
-
-class IntroScreen(val intro:String) extends ScreenAdaptor {
-
-  val text = new Text()
-
-  override def callWhenShowScreen(): Unit = {
-    text.setWrappingWidth(getScene.getWidth / 2)
-  }
-
-  override def initScreen(): Screen = {
-    val a = new BorderPane()
-    text.setFont(Font.font("STHeiti",30))
-    text.setText(intro)
-    text.setLineSpacing(10)
-    val next = new Text()
-    next.setText("点击空格开始实验")
-    next.setFont(Font.font("STKaiti", 20))
-    next.setFill(Color.DARKGRAY)
-    a.setCenter(text)
-    a.setBottom(next)
-    BorderPane.setAlignment(next,Pos.CENTER)
-    BorderPane.setMargin(next, new Insets(0,0,30,0))
-    layout = a
-    duration = INTRO_MAX_KEEP
-    information = "指导语屏幕"
-    layout.setCursor(Cursor.NONE)
-    this
-  }
-
-  override def eventHandler(event: Event, experiment: Experiment, scene: Scene): Unit = {
-    ifKeyButton(KeyCode.SPACE, event) {
-      goNextScreenSafe
-    }
-  }
 }
 
 /**
@@ -482,10 +464,13 @@ class TaskScreen(val isCounting: Boolean = false, val isStimulate: Boolean = fal
     else if (isStimulate) duration = STIMULATE_KEEP_TIME_MS
     val root = new BorderPane()
     val group = new Group()
-    val points = new Points(trialData.pointNumber,
+    val points = new Points(
+      trialData.pointNumber,
       Random.nextInt(trialData.pointNumber),
-      CIRCLE_RADIUS_PIXEL,
-      BOUND_WIDTH, BOUND_HEIGHT).points
+      CIRCLE_RADIUS_PIXEL.toInt,
+      BOUND_WIDTH, BOUND_HEIGHT,
+      true,
+      is.pxInScreenToDeg(2).toInt).points
     group.getChildren.addAll(points:_*)
     root.setCenter(group)
     layout = root
@@ -494,6 +479,7 @@ class TaskScreen(val isCounting: Boolean = false, val isStimulate: Boolean = fal
     layout.setCursor(Cursor.NONE)
     this
   }
+
 
   override def eventHandler(event: Event, experiment: Experiment, scene: Scene): Unit = {
     //如果是计数，那么记录反应时、记录时刻，并且将数据添加到 ExperimentData 中
@@ -510,6 +496,11 @@ class TaskScreen(val isCounting: Boolean = false, val isStimulate: Boolean = fal
       trialData.actionTime = (System.nanoTime() - showThisScreenNanoTime)/1000000
       trialData.recordInstant = Instant.now()
       logger.info("WARN - KEY_STIMULATE - Get Result and Go Now..." + trialData)
+      //import collection.JavaConverters._
+      /*if (experimentData.trialData.asScala.exists(_.actionTime == trialData.actionTime)) {
+        println(experimentData.trialData)
+        println(trialData)
+      }*/
       experimentData.trialData.add(trialData)
       goNextScreenSafe
     }
@@ -561,7 +552,7 @@ class EstimateActionRequireScreen(val trialData: TrialData, val experimentData: 
   }
 }
 
-class RestScreen(val minRestTimeSeconds: Int = 0) extends ScreenAdaptor {
+class RestScreen(val minRestTimeSeconds: Int) extends ScreenAdaptor {
 
   var showScreenTime: Instant = _
 
@@ -589,7 +580,7 @@ class RestScreen(val minRestTimeSeconds: Int = 0) extends ScreenAdaptor {
     r.setSpacing(20)
     r.getChildren.addAll(text, infoText)
     layout = r
-    duration = MAX_REST_KEEP_TIME
+    duration = MAX_REST_KEEP_TIME_MS
     information = if (minRestTimeSeconds == 0) "可控休息屏幕" else "强制最短休息屏幕"
     layout.setCursor(Cursor.NONE)
     this
@@ -629,269 +620,54 @@ class RestScreen(val minRestTimeSeconds: Int = 0) extends ScreenAdaptor {
   }
 }
 
-class RestTrial(val minRestSeconds:Int = 10) extends Trial {
+class RestTrial extends Trial {
   override def initTrial(): Trial = {
-    screens.add(new RestScreen(minRestSeconds).initScreen())
+    screens.add(new RestScreen(EXPERIMENT_MIN_REST_SECONDS).initScreen())
     information = "Rest Trial"
     this
   }
 }
 
-class VoiceDetectEventMaker(exp: Experiment, scene: Scene) extends EventMaker(exp, scene) {
+class IntroScreen(val intro:String) extends ScreenAdaptor {
 
-  val logger: Logger = LoggerFactory.getLogger(classOf[VoiceDetectEventMaker])
+  val text = new Text()
 
-  override def run(): Unit = {
-    logger.debug("VoiceDetectEventMaker Called now....")
-    val capture = new Capture()
-    import Utils._
-    capture.messageProperty().addListener {
-      val value = capture.getMessage.toDouble
-      if (value != 0.0) {
-        logger.debug("Receive Sound Event Now..., Current Sound Signal is " + value)
-        exp.getScreen.eventHandler(new Event(Event.ANY), exp, scene)
-      }
+  override def callWhenShowScreen(): Unit = {
+    text.setWrappingWidth(getScene.getWidth / 2)
+  }
+
+  override def initScreen(): Screen = {
+    val a = new BorderPane()
+    text.setFont(Font.font("STHeiti",30))
+    text.setText(intro)
+    text.setLineSpacing(10)
+    val next = new Text()
+    next.setText("点击空格开始实验")
+    next.setFont(Font.font("STKaiti", 20))
+    next.setFill(Color.DARKGRAY)
+    a.setCenter(text)
+    a.setBottom(next)
+    BorderPane.setAlignment(next,Pos.CENTER)
+    BorderPane.setMargin(next, new Insets(0,0,30,0))
+    layout = a
+    duration = INTRO_MAX_KEEP
+    information = "指导语屏幕"
+    layout.setCursor(Cursor.NONE)
+    this
+  }
+
+  override def eventHandler(event: Event, experiment: Experiment, scene: Scene): Unit = {
+    ifKeyButton(KeyCode.SPACE, event) {
+      goNextScreenSafe
     }
-    new Thread(capture).start()
   }
 }
 
-class MzjApplication extends Application {
+class IntroTrial(val intro:String) extends Trial {
 
-  val runner: ExpRunner = new ExpRunner {
-    override def initExpRunner(): Unit = {
-      val makers = new util.HashSet[String]()
-      makers.add("com.mazhangjing.rhythm.VoiceDetectEventMaker")
-      setEventMakerSet(makers)
-      val set = new util.HashSet[OpenedEvent]()
-      set.add(OpenedEvent.KEY_PRESSED)
-      setOpenedEventSet(set)
-      setExperimentClassName("com.mazhangjing.rhythm.MzjExperiment")
-      setVersion("0.0.1")
-      setFullScreen(true)
-    }
-  }
-
-  val estimateBtn = new ToggleButton("感数")
-  val countingBtn = new ToggleButton("计数")
-  val allBtn = new ToggleButton("随机全部")
-  val testBtn = new ToggleButton("测试")
-  val fastTestBtn = new ToggleButton("快速测试")
-  val realBtn = new ToggleButton("正式实验")
-  val c1 = new ToggleButton("基线条件")
-  val c2 = new ToggleButton("节律高频条件")
-  val c3 = new ToggleButton("节律中频条件")
-  val c4 = new ToggleButton("节律低频条件")
-  val c5 = new ToggleButton("无节律条件")
-  val c6 = new Button("全部")
-  val shuffleBtn = new Hyperlink("Tell Me a Screct")
-
-  val start = new Button("RUN EXPERIMENT")
-
-  val name = new TextField()
-  val gender = new ChoiceBox[String]()
-  val id = new TextField()
-  val hz = new TextField()
-  val info = new TextField()
-
-  var experimentData:ExperimentData = _
-
-  val set: collection.mutable.Set[Int]= new mutable.HashSet[Int]()
-
-  val root: Parent =  {
-    val gridPane = new GridPane()
-    val condition1 = new Label("配置面板")
-    val ecGroup = new ToggleGroup
-    ecGroup.getToggles.addAll(estimateBtn, countingBtn, allBtn)
-    val trialGroup = new ToggleGroup
-    trialGroup.getToggles.addAll(testBtn, fastTestBtn, realBtn)
-    gridPane.add(condition1, 0,0)
-    gridPane.add(new Label("实验"),0,1)
-    val b1 = new HBox(); b1.getChildren.addAll(estimateBtn, countingBtn, allBtn); b1.setSpacing(5)
-    gridPane.add(b1, 1,1)
-    gridPane.add(new Label("调试"),0,2)
-    val b2 = new HBox(); b2.getChildren.addAll(testBtn, fastTestBtn, realBtn); b2.setSpacing(5)
-    gridPane.add(b2, 1,2)
-    gridPane.add(new Label("条件"),0,3)
-    val b3 = new HBox(); b3.getChildren.addAll(c1,c2,c3,c4,c5,c6); b3.setSpacing(5)
-
-    import MzjExperiment._
-    import Utils._
-
-    ecGroup.selectedToggleProperty().addListener {
-      if (ecGroup.getSelectedToggle == estimateBtn) {
-        JUST_ESTIMATE = true
-        JUST_COUNTING = false
-      } else if (ecGroup.getSelectedToggle == countingBtn) {
-        JUST_ESTIMATE = false
-        JUST_COUNTING = true
-      } else if (ecGroup.getSelectedToggle == allBtn) {
-        JUST_ESTIMATE = false
-        JUST_COUNTING = false
-      }
-    }
-
-    trialGroup.selectedToggleProperty().addListener {
-      val selected = trialGroup.getSelectedToggle
-      if (selected == testBtn) {
-        IS_DEBUG = true
-        IS_FAST_DEBUG = false
-      } else if (selected == fastTestBtn) {
-        IS_DEBUG = true
-        IS_FAST_DEBUG = true
-      } else if (selected == realBtn) {
-        IS_DEBUG = false
-        IS_FAST_DEBUG = false
-      }
-    }
-
-    c1.selectedProperty().addListener(_ => set.add(1))
-    c2.selectedProperty().addListener(_ => set.add(2))
-    c3.selectedProperty().addListener(_ => set.add(3))
-    c4.selectedProperty().addListener(_ => set.add(4))
-    c5.selectedProperty().addListener(_ => set.add(5))
-
-    c6.setOnAction(_ => {
-      if (c1.isSelected && c2.isSelected && c3.isSelected
-      && c4.isSelected && c5.isSelected) {
-        c1.setSelected(false)
-        c2.setSelected(false)
-        c3.setSelected(false)
-        c4.setSelected(false)
-        c5.setSelected(false)
-      } else {
-        c1.setSelected(true)
-        c2.setSelected(true)
-        c3.setSelected(true)
-        c4.setSelected(true)
-        c5.setSelected(true)
-      }
-    })
-
-    ecGroup.selectToggle(allBtn)
-    trialGroup.selectToggle(realBtn)
-
-    gridPane.add(b3,1,3)
-    val cmd = new HBox(); cmd.setSpacing(8); cmd.getChildren.addAll(start, shuffleBtn)
-    GridPane.setConstraints(cmd,0,11,2,2)
-    GridPane.setMargin(cmd,new Insets(30,0,0,0))
-    gridPane.getChildren.add(cmd)
-    gridPane.setAlignment(Pos.CENTER)
-    gridPane.setHgap(5)
-    gridPane.setVgap(10)
-
-    val userLabel = new Label("被试信息")
-    name.setPromptText("姓名")
-    name.setText("NoName")
-    gender.setItems({
-      val a = FXCollections.observableArrayList[String]()
-      a.addAll("女","男")
-      a
-    }); gender.getSelectionModel.selectFirst()
-    id.setPromptText("编号")
-    id.setText((Random.nextInt(10000) + 23333).toString)
-    hz.setText("2000")
-    hz.setPromptText("最佳频率")
-    info.setPromptText("备注")
-
-    gridPane.add(userLabel, 0,4)
-    GridPane.setMargin(userLabel, new Insets(10,0,0,0))
-    gridPane.add(new Label("姓名"), 0,5)
-    gridPane.add(new Label("性别"),0,6)
-    gridPane.add(new Label("编号"),0,7)
-    gridPane.add(new Label("频率"),0,8)
-    gridPane.add(new Label("备注"),0,9)
-    gridPane.add(name,1,5)
-    gridPane.add(gender,1,6)
-    val detail = new Text("如果是分开做的实验，先输入编号并点击按钮以从 编号.obj 文件中读取原本的信息")
-    detail.setFill(Color.DARKGRAY)
-    val load = new Button("从 编号.obj 中加载")
-    val hbox = new HBox(); hbox.setSpacing(5)
-    hbox.getChildren.addAll(id, load)
-    gridPane.add(hbox,1,7)
-    gridPane.add(hz,1,8)
-    gridPane.add(info,1,9)
-    gridPane.add(detail, 1,10)
-
-    load.textProperty().bind(
-      new SimpleStringProperty("从 ").concat(id.textProperty()).concat(".obj 加载"))
-    load.setOnAction(_ => {
-      try {
-        val data = ExperimentData.loadWithObject(Paths.get(id.getText() + ".obj"))
-        this.experimentData = data
-        name.setText(this.experimentData.userName)
-        id.setText(this.experimentData.userId.toString)
-        hz.setText(this.experimentData.prefHz.toString)
-        gender.getSelectionModel.select(this.experimentData.gender)
-        info.setText(this.experimentData.information)
-      } catch {
-        case e: Throwable =>
-          this.experimentData = null
-          val alert = new Alert(AlertType.ERROR)
-          alert.setHeaderText("加载出现问题")
-          alert.setContentText("无法完成从指定文件进行的加载，请检查文件名和路径，以及读写权限")
-          e.printStackTrace(System.err)
-          alert.showAndWait()
-      }
-    })
-    gridPane
-  }
-
-  val configureScene = new Scene(root, 700, 600)
-
-  override def start(stage: Stage): Unit = {
-    stage.setTitle("Rhythm Experiment Configure")
-    stage.setScene(configureScene)
-
-    start.setOnAction(_ => {
-      if (experimentData == null) {
-        //是新实验
-        experimentData = new ExperimentData()
-        experimentData.userName = name.getText().trim
-        experimentData.gender = gender.getSelectionModel.getSelectedIndex
-        experimentData.userId = id.getText().toInt
-        experimentData.information = info.getText().trim
-        experimentData.prefHz = hz.getText().trim.toDouble
-      } else {
-        //是旧实验
-        //如果是旧实验，仅允许添加 Information，但是不允许变更姓名、性别、ID 和 prefHZ
-        experimentData.information = info.getText().trim
-      }
-      MzjExperiment.initExperiment(experimentData, set.toSet)
-      val experimentStage = new Stage()
-      val helper = new SimpleExperimentHelperImpl(runner)
-      helper.initStage(experimentStage)
-      experimentStage.setTitle("Rhythm Experiment Runner")
-      experimentStage.show()
-    })
-
-    shuffleBtn.setOnAction(_ => {
-      val alert = new Alert(AlertType.INFORMATION)
-      alert.setHeaderText("Lucky Order")
-      val ints = Random.shuffle(List.range(1,6))
-      alert.setContentText(ints.mkString(" - "))
-      alert.showAndWait()
-    })
-
-    stage.show()
-  }
-}
-
-object Utils {
-
-  /**
-    * 用來解決 JavaFx addEventHandler 时的泛型问题
-    * @param node 为 javafx.scene.Node 添加一个用于派发事件的方法
-    */
-  implicit class SuperNode(node: Node) {
-    def handle[T <: Event](eventType: EventType[T], op: T => Unit): Unit =
-      node.addEventHandler(eventType, (event: T) => op(event))
-  }
-
-  implicit class SuperProperty[T](observableValue: ObservableValue[T]) {
-    def addListener(op: => Unit): Unit = {
-      val changedListener: ChangeListener[T] = (e, o, n) => op
-      observableValue.addListener(changedListener)
-    }
+  override def initTrial(): Trial = {
+    screens.add(new IntroScreen(intro).initScreen())
+    information = "指导语试次"
+    this
   }
 }
